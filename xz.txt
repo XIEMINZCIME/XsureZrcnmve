@@ -13,3 +13,10 @@ V1.165 更新内容
 · XZArchive 存档列表同步终端列表风格：[ SYSTEM_MENU ] 头栏、[ 编号 ] 行、等宽黑白
 · 版本号升 V1.165（sp-title / 关于 / 画布 / 更新横幅）
 · F5 无功能；Esc 仅预留；F4 全屏；F1~12 不重启/跳过（保持不变）
+
+V1.166 更新内容
+· XZArchive 存档系统内联进 XsureZrcnmve.hta 单文件（去掉外部 <script src> 依赖，便于单文件分发）；xz-archive.js 保留为开发备份副本
+· 设置终端状态持久化：用 FileSystemObject 写 HTA 同目录 XsureSettings.dat（JSON），重启后自动恢复主题 / 安全模式 / 全屏 / 噪点 / 更新横幅等开关
+· 版本号升 V1.166（sp-title / 关于 / 画布 / 更新横幅 / XZArchive 列表头栏）
+· 已推送至 GitHub 仓库 XIEMINZCIME/XsureZrcnmve：保留远程 LICENSE/README，新增工程源码（101 个文件；.exe / .zip / 3D 二进制 .glb/.vrm/.blend / 构建缓存 已忽略）
+· F5 无功能；Esc 仅预留；F4 全屏；F1~12 不重启/跳过（保持不变）
