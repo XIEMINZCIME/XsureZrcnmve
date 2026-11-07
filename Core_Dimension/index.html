@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CORE_DIMENSION | 具象画观测终端</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+    html, body { width: 100vw; height: 100vh; overflow: hidden; }
+    body {
+        background: radial-gradient(circle at 50% 45%, #1A1C23 0%, #0A0C10 70%, #050608 100%);
+        color: #E0E5FF; font-family: 'Courier New', 'Microsoft YaHei', monospace;
+    }
+    body.transparent { background: transparent; }
+    canvas { display: block; }
+
+    #hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+    #hud > * { pointer-events: auto; }
+
+    .top-bar {
+        position: absolute; top: 0; left: 0; right: 0;
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 16px 22px; border-bottom: 1px solid rgba(100,150,255,0.18);
+        background: linear-gradient(180deg, rgba(5,7,12,0.75), transparent);
+        font-size: 12px; letter-spacing: 1px;
+    }
+    .brand { color: #8FA8E8; font-weight: bold; }
+    .brand small { display: block; color: #55637F; font-size: 10px; margin-top: 4px; letter-spacing: 2px; }
+
+    .switches { display: flex; gap: 8px; align-items: center; }
+    .btn {
+        background: rgba(58,95,188,0.12); color: #A0B8F0;
+        border: 1px solid rgba(100,150,255,0.35); padding: 7px 13px;
+        font-family: inherit; font-size: 11px; letter-spacing: 1px; cursor: pointer;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+        transition: all 0.2s;
+    }
+    .btn:hover { background: rgba(58,95,188,0.35); color: #fff; }
+    .btn.active { background: #3A5FBC; color: #fff; border-color: #6B8FF0; }
+
+    #status {
+        position: absolute; bottom: 18px; left: 22px;
+        font-size: 11px; color: #66759B; letter-spacing: 1px; line-height: 1.9;
+    }
+    #status b { color: #A0B8F0; font-weight: normal; }
+    .hint { position: absolute; bottom: 18px; right: 22px; font-size: 11px; color: #4C5875; text-align: right; }
+
+    #loading {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: min(320px, 70vw); text-align: center; font-size: 13px; letter-spacing: 1px;
+        color: #8FA8E8; transition: opacity 0.5s;
+    }
+    #loading .bar { margin-top: 14px; height: 3px; background: rgba(100,150,255,0.15); overflow: hidden; }
+    #loading .bar > i { display: block; height: 100%; width: 0%; background: #3A5FBC; transition: width 0.2s; }
+    #loading .sub { margin-top: 10px; font-size: 10px; color: #55637F; }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    #loading.error { color: #FF7A7A; }
+</style>
+
+<!-- 依赖已全部本地化到 vendor/，无需联网 -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js",
+    "three/addons/": "./vendor/addons/",
+    "@pixiv/three-vrm": "./vendor/three-vrm.module.js"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="loading">
+        <div id="load-msg">正在从维度裂隙中唤醒具象画...</div>
+        <div class="bar"><i id="load-bar"></i></div>
+        <div class="sub" id="load-sub">CORE_DIMENSION / INITIALIZING</div>
+    </div>
+
+    <div id="hud">
+        <div class="top-bar">
+            <div class="brand">CORE_DIMENSION // 具象画观测终端
+                <small>XSUREZRCNMVE ENGINE</small>
+            </div>
+            <div class="switches">
+                <button class="btn" id="btn-vrm">精确版 VRM</button>
+                <button class="btn" id="btn-geo">几何版 GLB</button>
+                <button class="btn" id="btn-flip">翻转 180°</button>
+                <button class="btn" id="btn-reset">重置视角</button>
+                <button class="btn" id="btn-vzc">重新扫描 VZC</button>
+            </div>
+        </div>
+
+        <div id="status">
+            <div>MODEL: <b id="st-model">--</b></div>
+            <div>STATE: <b id="st-state">--</b></div>
+            <div>SPRINGBONE: <b id="st-spring">--</b></div>
+            <div>BBOX: <b id="st-bbox">--</b></div>
+            <div>VIEW: <b id="st-view">--</b></div>
+            <div>VZC: <b id="st-vzc">--</b></div>
+        </div>
+        <div class="hint">拖拽旋转 · 滚轮缩放<br>ESC / 退出观测</div>
+    </div>
+
+    <!-- VZC 运行时先于 main.js 载入，保证 window.VZC 在场景初始化时已存在 -->
+    <script type="module" src="./vzc-runtime.js"></script>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

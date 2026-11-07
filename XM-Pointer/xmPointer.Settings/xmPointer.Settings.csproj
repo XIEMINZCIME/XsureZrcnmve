@@ -1,0 +1,77 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>BAPointer.Settings</RootNamespace>
+    <AssemblyName>BAPointer.Settings</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- WinUI 3 必需 -->
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+
+    <!-- 非打包（unpackaged）方式运行，路径固定，方便 Overlay 读取同一份配置 -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- 启动时需要 Windows App SDK bootstrapper 初始化（非打包模式必需） -->
+  <PropertyGroup Condition="'$(WindowsPackageType)' == 'None'">
+    <WindowsAppSdkBootstrapInitialize>true</WindowsAppSdkBootstrapInitialize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250205002" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+  </ItemGroup>
+
+  <!-- UI 与默认配置随生成输出 -->
+  <ItemGroup>
+    <Content Include="ui\bapointer.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- 用于让 Settings 引用 Overlay 的输出路径 -->
+  <PropertyGroup>
+    <OverlayProjectDir>$(MSBuildThisFileDirectory)..\BAPointer.Overlay\</OverlayProjectDir>
+    <OverlayOutputDir>$(OverlayProjectDir)bin\$(Platform)\$(Configuration)\</OverlayOutputDir>
+  </PropertyGroup>
+
+  <!-- 构建后把 Overlay 的 exe 及依赖拷到 Settings 输出目录 -->
+  <Target Name="CopyOverlay" AfterTargets="Build">
+    <ItemGroup>
+      <OverlayFiles Include="$(OverlayOutputDir)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(OverlayFiles)"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true"
+          Condition="'@(OverlayFiles)' != ''" />
+    <Message Importance="high"
+             Text="Copied $(Count) overlay files from $(OverlayOutputDir) → $(OutDir)"
+             Condition="'@(OverlayFiles)' != ''" />
+  </Target>
+
+  <!-- Clean 时同步清理拷过去的 Overlay 文件 -->
+  <Target Name="CleanOverlay" AfterTargets="Clean">
+    <ItemGroup>
+      <OverlayInOutput Include="$(OutDir)BAPointer.Overlay.*" />
+    </ItemGroup>
+    <Delete Files="@(OverlayInOutput)" ContinueOnError="true" />
+  </Target>
+
+</Project>

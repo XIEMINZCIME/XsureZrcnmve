@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BA_POINTER | 配置终端</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+
+:root {
+  --bg-color: #050505;
+  --text-color: #FFFFFF;
+  --accent-color: #888888;
+  --wedge-color: #FFFFFF;
+  --line-color: #222222;
+  --panel-bg: rgba(10, 10, 12, .78);
+  --panel-border: rgba(255, 255, 255, .14);
+  --fx-main: #5bb5ff;
+  --fx-grey: #9aa0a8;
+}
+body.light-mode {
+  --bg-color: #FFFFFF;
+  --text-color: #050505;
+  --accent-color: #555555;
+  --wedge-color: #050505;
+  --line-color: #E0E0E0;
+  --panel-bg: rgba(255, 255, 255, .84);
+  --panel-border: rgba(0, 0, 0, .14);
+  --fx-main: #1f7ae0;
+  --fx-grey: #6b7280;
+}
+
+body {
+  background: var(--bg-color);
+  overflow: hidden;
+  font-family: 'Arial Black', 'Microsoft YaHei', sans-serif;
+  color: var(--text-color);
+  height: 100vh;
+  transition: background .4s;
+  cursor: crosshair;
+}
+/* ── 应用窗口 ── */
+.app-window {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(960px, 92vw); height: min(640px, 86vh);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  display: flex; flex-direction: column;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 26px), calc(100% - 26px) 100%, 0 100%);
+  z-index: 20;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+  transition: background .4s, border-color .4s;
+}
+body.light-mode .app-window { box-shadow: 0 30px 80px rgba(0, 0, 0, .18); }
+
+/* ── 标题栏 ── */
+.titlebar {
+  height: 52px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--panel-border);
+  font-family: 'Courier New', monospace;
+}
+.win-dots { display: flex; gap: 6px; }
+.win-dots i {
+  width: 9px; height: 9px; display: block;
+  background: var(--line-color);
+  transition: background .2s;
+}
+.win-dots i:hover { background: var(--accent-color); }
+.titlebar .win-title {
+  font-size: 12px; font-weight: 900; letter-spacing: 2px;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.titlebar .win-title .ver {
+  font-size: 10px; color: var(--accent-color); font-weight: bold; letter-spacing: 1px;
+}
+.titlebar .spacer { flex: 1; }
+.titlebar .win-status {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 10px; letter-spacing: 1.5px; color: var(--accent-color); font-weight: bold;
+}
+.titlebar .win-status .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #36c98f;
+  box-shadow: 0 0 0 3px rgba(54, 201, 143, .16);
+}
+.theme-toggle {
+  background: transparent; border: 1px solid var(--panel-border);
+  color: var(--text-color); cursor: pointer;
+  font-family: 'Courier New', monospace; font-size: 10px; font-weight: 900;
+  letter-spacing: 1.5px; padding: 6px 11px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+  transition: .2s;
+}
+.theme-toggle:hover { background: var(--text-color); color: var(--bg-color); border-color: var(--text-color); }
+
+/* ── 主体 ── */
+.win-body { flex: 1; display: flex; min-height: 0; }
+
+/* 左侧导航 */
+.nav {
+  width: 190px; flex-shrink: 0;
+  border-right: 1px solid var(--panel-border);
+  padding: 14px 10px;
+  display: flex; flex-direction: column; gap: 3px;
+  overflow-y: auto;
+}
+.nav::-webkit-scrollbar { width: 0; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px;
+  background: transparent; border: 0; border-left: 3px solid transparent;
+  color: var(--accent-color);
+  font-family: 'Courier New', monospace; font-size: 12px; font-weight: bold;
+  letter-spacing: 1px; cursor: pointer; text-align: left;
+  transition: .18s;
+}
+.nav-item .idx { font-size: 9px; color: var(--line-color); letter-spacing: 0; }
+.nav-item:hover { color: var(--text-color); background: rgba(128, 128, 128, .08); }
+.nav-item.active {
+  color: var(--text-color);
+  border-left-color: var(--text-color);
+  background: rgba(128, 128, 128, .1);
+}
+.nav-item.active .idx { color: var(--accent-color); }
+
+/* 右侧内容 */
+.content { flex: 1; overflow-y: auto; padding: 20px 22px; min-width: 0; }
+.content::-webkit-scrollbar { width: 5px; }
+.content::-webkit-scrollbar-thumb { background: var(--line-color); }
+.content::-webkit-scrollbar-track { background: transparent; }
+
+.pane { display: none; }
+.pane.active { display: block; }
+.pane-title {
+  font-family: 'Courier New', monospace;
+  font-size: 10px; letter-spacing: 2px; color: var(--accent-color);
+  margin-bottom: 18px; padding-bottom: 10px;
+  border-bottom: 1px dashed var(--panel-border);
+  display: flex; align-items: center; gap: 10px;
+}
+.pane-title::after { content: ""; flex: 1; height: 1px; background: var(--panel-border); }
+
+/* 滑动条 */
+.slider-row { margin-bottom: 17px; }
+.slider-row:last-child { margin-bottom: 0; }
+.slider-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-family: 'Courier New', monospace;
+  font-size: 12px; margin-bottom: 9px;
+}
+.slider-head .val {
+  color: var(--accent-color); font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 2px; background: var(--line-color);
+  outline: none; cursor: pointer; display: block;
+  transition: background .4s;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  background: var(--text-color);
+  border: 0; cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% 65%, 65% 100%, 0 100%);
+  transition: background .15s, transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+  background: var(--fx-main);
+  transform: scale(1.2);
+}
+input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px; background: var(--text-color);
+  border: 0; cursor: pointer; border-radius: 0;
+}
+
+/* 开关行（按钮形态） */
+.switch-row {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 14px; padding: 12px 0;
+  border-bottom: 1px dashed var(--panel-border);
+}
+.switch-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.switch-row:first-of-type { padding-top: 0; }
+.switch-label {
+  font-family: 'Courier New', monospace;
+  font-size: 12px; line-height: 1.5;
+}
+.switch-sub {
+  font-family: 'Courier New', monospace;
+  font-size: 10px; color: var(--accent-color); margin-top: 3px;
+}
+.switch-btn {
+  flex-shrink: 0; min-width: 70px;
+  background: transparent; border: 1px solid var(--text-color);
+  color: var(--text-color);
+  padding: 6px 12px;
+  font-family: 'Courier New', monospace; font-weight: 900;
+  font-size: 11px; letter-spacing: 1px; cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+  transition: .18s;
+  text-align: center;
+}
+.switch-btn:hover { background: var(--accent-color); color: #FFF; border-color: var(--accent-color); }
+.switch-btn.on { background: var(--text-color); color: var(--bg-color); }
+.switch-btn.on:hover { background: var(--fx-main); color: #FFF; border-color: var(--fx-main); }
+
+/* 单选按钮组 */
+.btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.opt-btn {
+  flex: 1; min-width: 76px;
+  background: transparent; border: 1px solid var(--text-color);
+  color: var(--text-color);
+  padding: 10px 8px;
+  font-family: 'Courier New', monospace; font-weight: 900;
+  font-size: 11px; letter-spacing: 1px; cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+  transition: .18s; text-align: center;
+}
+.opt-btn:hover { background: var(--accent-color); color: #FFF; border-color: var(--accent-color); }
+.opt-btn.on { background: var(--text-color); color: var(--bg-color); }
+.opt-btn.on:hover { background: var(--fx-main); color: #FFF; border-color: var(--fx-main); }
+
+/* 信息块 */
+.info-block {
+  font-family: 'Courier New', monospace;
+  font-size: 11px; line-height: 2; letter-spacing: .5px;
+  color: var(--accent-color);
+  padding-top: 16px; margin-top: 16px;
+  border-top: 1px dashed var(--panel-border);
+}
+.info-block b { color: var(--text-color); font-weight: bold; }
+
+/* 关于页 */
+.about-line { font-family: 'Courier New', monospace; font-size: 11px; line-height: 2.2; color: var(--accent-color); }
+.about-line b { color: var(--text-color); }
+
+/* ── 底部状态栏 ── */
+.statusbar {
+  height: 46px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 18px;
+  border-top: 1px solid var(--panel-border);
+  font-family: 'Courier New', monospace;
+  font-size: 10px; letter-spacing: 1px; color: var(--accent-color);
+}
+.statusbar .spacer { flex: 1; }
+.statusbar .stat b { color: var(--text-color); font-weight: bold; }
+.action-btn {
+  background: var(--text-color); color: var(--bg-color);
+  border: 0; cursor: pointer;
+  padding: 8px 16px;
+  font-family: 'Courier New', monospace; font-weight: 900;
+  font-size: 10px; letter-spacing: 1.5px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+  transition: .18s;
+}
+.action-btn:hover { background: var(--fx-main); color: #FFF; }
+.action-btn.ghost {
+  background: transparent; color: var(--text-color);
+  border: 1px solid var(--panel-border);
+}
+.action-btn.ghost:hover { background: var(--accent-color); color: #FFF; border-color: var(--accent-color); }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; left: 50%; bottom: 60px;
+  transform: translate(-50%, 16px);
+  background: var(--text-color); color: var(--bg-color);
+  padding: 9px 20px;
+  font-family: 'Courier New', monospace; font-size: 11px; font-weight: bold;
+  letter-spacing: 1.5px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+  opacity: 0; transition: .25s; pointer-events: none; z-index: 300;
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ── 画布 ── */
+#fx-canvas { position: fixed; inset: 0; z-index: 999; pointer-events: none; }
+
+/* ── 移动端 ── */
+@media screen and (max-width: 700px) {
+  .app-window {
+    width: 100vw; height: 100vh;
+    left: 0; top: 0; transform: none;
+    clip-path: none; border: 0;
+  }
+  .win-dots { display: none; }
+  .nav { width: 54px; padding: 10px 4px; }
+  .nav-item { padding: 11px 0; justify-content: center; }
+  .nav-item .label { display: none; }
+  .content { padding: 16px; }
+  .statusbar { gap: 10px; padding: 0 12px; }
+  .statusbar .stat:nth-child(2) { display: none; }
+  .action-btn { padding: 7px 11px; font-size: 9px; }
+}
+
+/* ── 横屏矮屏 ── */
+@media screen and (max-height: 520px) {
+  .app-window { height: 96vh; }
+  .titlebar { height: 42px; }
+  .statusbar { height: 40px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 背景“壁纸” -->
+<div class="bg-layer">
+  <div class="block-wedge"></div>
+  <div class="block-grey"></div>
+  <div class="line-rule"></div>
+</div>
+
+<!-- 应用窗口 -->
+<div class="app-window">
+
+  <!-- 标题栏 -->
+  <div class="titlebar">
+    <div class="win-dots"><i></i><i></i><i></i></div>
+    <div class="win-title">BA_POINTER <span class="ver">v1.1.5</span></div>
+    <div class="spacer"></div>
+    <div class="win-status"><span class="dot"></span>RUNNING</div>
+    <button class="theme-toggle" onclick="toggleTheme()">[ REVERSE ]</button>
+  </div>
+
+  <!-- 主体 -->
+  <div class="win-body">
+
+    <!-- 导航 -->
+    <nav class="nav">
+      <button class="nav-item active" data-pane="fx" onclick="switchPane(this)">
+        <span class="idx">01</span><span class="label">视觉特效</span>
+      </button>
+      <button class="nav-item" data-pane="burst" onclick="switchPane(this)">
+        <span class="idx">02</span><span class="label">点击特效</span>
+      </button>
+      <button class="nav-item" data-pane="behavior" onclick="switchPane(this)">
+        <span class="idx">03</span><span class="label">行为设置</span>
+      </button>
+      <button class="nav-item" data-pane="display" onclick="switchPane(this)">
+        <span class="idx">04</span><span class="label">显示管理</span>
+      </button>
+      <button class="nav-item" data-pane="about" onclick="switchPane(this)">
+        <span class="idx">05</span><span class="label">关于</span>
+      </button>
+    </nav>
+
+    <!-- 内容 -->
+    <main class="content">
+
+      <!-- 视觉特效 -->
+      <section class="pane active" data-pane="fx">
+        <div class="pane-title">TRAIL · 拖尾参数</div>
+
+        <div class="slider-row">
+          <div class="slider-head"><span>拖尾宽度</span><span class="val" id="v-trail">18 px</span></div>
+          <input type="range" min="1" max="60" value="18" data-key="trail" data-unit=" px">
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span>粒子尺寸</span><span class="val" id="v-size">2.4 x</span></div>
+          <input type="range" min="1" max="12" value="24" data-key="size" data-div="10" data-unit=" x">
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span>衰减速度</span><span class="val" id="v-decay">0.040</span></div>
+          <input type="range" min="1" max="12" value="4" data-key="decay" data-div="100">
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span>生成密度</span><span class="val" id="v-density">1.000</span></div>
+          <input type="range" min="10" max="200" value="100" data-key="density" data-div="100">
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span>Bloom 泛光</span><span class="val" id="v-bloom">12</span></div>
+          <input type="range" min="0" max="40" value="12" data-key="bloom">
+        </div>
+      </section>
+
+      <!-- 点击特效 -->
+      <section class="pane" data-pane="burst">
+        <div class="pane-title">BURST · 点击爆散</div>
+
+        <div class="slider-row">
+          <div class="slider-head"><span>碎片数量</span><span class="val" id="v-burst">26</span></div>
+          <input type="range" min="0" max="80" value="26" data-key="burst">
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span>扩散力度</span><span class="val" id="v-force">1.0</span></div>
+          <input type="range" min="2" max="30" value="10" data-key="force" data-div="10">
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span>重力影响</span><span class="val" id="v-grav">0.060</span></div>
+          <input type="range" min="0" max="20" value="6" data-key="grav" data-div="100">
+        </div>
+
+        <div class="info-block">
+          &gt; 在窗口外空白处点击即可预览爆散效果<br>
+          &gt; 当前配置会实时写入粒子引擎
+        </div>
+      </section>
+
+      <!-- 行为设置 -->
+      <section class="pane" data-pane="behavior">
+        <div class="pane-title">BEHAVIOR · 行为开关</div>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">拖尾常驻</div>
+            <div class="switch-sub">关闭后需按住左键才生成拖尾</div>
+          </div>
+          <button class="switch-btn on" data-toggle="persistent" onclick="toggleSwitch(this)">[ ON ]</button>
+        </div>
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">全屏时自动暂停</div>
+            <div class="switch-sub">前台应用进入全屏即停止渲染</div>
+          </div>
+          <button class="switch-btn on" data-toggle="pauseFull" onclick="toggleSwitch(this)">[ ON ]</button>
+        </div>
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">录屏中隐藏覆盖层</div>
+            <div class="switch-sub">WDA_EXCLUDEFROMCAPTURE</div>
+          </div>
+          <button class="switch-btn" data-toggle="hideCapture" onclick="toggleSwitch(this)">[ OFF ]</button>
+        </div>
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">混合 DPI 适配</div>
+            <div class="switch-sub">多显示器不同缩放比例</div>
+          </div>
+          <button class="switch-btn on" data-toggle="dpi" onclick="toggleSwitch(this)">[ ON ]</button>
+        </div>
+      </section>
+
+      <!-- 显示管理 -->
+      <section class="pane" data-pane="display">
+        <div class="pane-title">DISPLAY · 作用范围</div>
+
+        <div class="btn-group">
+          <button class="opt-btn on" data-opt="scope" data-value="all" onclick="selectOpt(this)">全部桌面</button>
+          <button class="opt-btn" data-opt="scope" data-value="primary" onclick="selectOpt(this)">主显示器</button>
+          <button class="opt-btn" data-opt="scope" data-value="cursor" onclick="selectOpt(this)">鼠标所在</button>
+        </div>
+
+        <div class="info-block">
+          &gt; 引擎: <b>D3D11 / DirectComposition</b><br>
+          &gt; 框架: <b>WinUI 3</b><br>
+          &gt; 当前范围: <b id="scope-readout">全部桌面</b>
+        </div>
+      </section>
+
+      <!-- 关于 -->
+      <section class="pane" data-pane="about">
+        <div class="pane-title">ABOUT · 关于</div>
+
+        <div class="about-line">
+          <b>xm Pointer</b><br>
+          致于游戏<br><br>
+          &gt; 版本: <b>v1.1.5</b><br>
+          &gt; 渲染: <b>D3D11</b><br>
+          &gt; 覆盖层: <b>DirectComposition</b><br>
+          &gt; 框架: <b>WinUI 3</b><br>
+          &gt; 系统要求: <b>Windows 10～11 19041+ (x64)</b><br><br>
+          本页面为配置终端 UI 原型，参数仅用于实时预览。
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 状态栏 -->
+  <div class="statusbar">
+    <span class="stat"><b>D3D11</b></span>
+    <span class="stat">FPS <b id="fps">--</b></span>
+    <span class="stat">粒子 <b id="pcount">0</b></span>
+    <div class="spacer"></div>
+    <button class="action-btn ghost" onclick="resetConfig()">[ 恢复默认 ]</button>
+    <button class="action-btn" onclick="saveConfig()">[ 保存配置 ]</button>
+  </div>
+
+</div>
+
+<canvas id="fx-canvas"></canvas>
+<div id="toast">SAVED</div>
+
+
+
+<script>
+/* ============================================================
+   WebView2 Bridge — 原生 ↔ Web 双向通信
+   ============================================================ */
+const bridge = {
+    available: false,
+
+    init() {
+        if (!window.chrome?.webview) {
+            console.warn('[Bridge] 非 WebView2 环境，回退到 localStorage 演示模式');
+            return;
+        }
+        this.available = true;
+
+        // 原生 → Web：监听宿主发来的消息
+        window.chrome.webview.addEventListener('message', (e) => {
+            const msg = e.data;
+            if (msg?.type === 'configLoaded') {
+                applyConfigFromHost(msg.payload);
+            } else if (msg?.type === 'configSaved') {
+                toast(`CONFIG SAVED · ${msg.timestamp}`);
+            }
+        });
+
+        // 告诉原生：UI 已就绪，可以推送配置了
+        window.chrome.webview.postMessage({ type: 'uiReady' });
+    },
+
+    // Web → 原生：下发配置
+    sendConfig(cfgPayload) {
+        if (!this.available) {
+            // 浏览器调试时回退到 localStorage
+            localStorage.setItem('ba-pointer-cfg', JSON.stringify(cfgPayload));
+            toast('LOCAL FALLBACK · 已写入 localStorage');
+            return;
+        }
+        window.chrome.webview.postMessage({
+            type: 'applyConfig',
+            payload: cfgPayload
+        });
+    }
+};
+
+bridge.init();
+/* ── 主题 ── */
+if (localStorage.getItem('theme') === 'light') document.body.classList.add('light-mode');
+function toggleTheme() {
+  document.body.classList.toggle('light-mode');
+  localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+}
+
+/* ── 导航切换 ── */
+function switchPane(btn) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  const target = document.querySelector(`.pane[data-pane="${btn.dataset.pane}"]`);
+  if (target) target.classList.add('active');
+}
+
+/* ── 配置 ── */
+const cfg = {
+  trail: 18, size: 2.4, decay: 0.04, density: 1, bloom: 12,
+  burst: 26, force: 1, grav: 0.06,
+  persistent: true, pauseFull: true, hideCapture: false, dpi: true,
+  scope: 'all'
+};
+
+/* 滑块 */
+document.querySelectorAll('input[type=range]').forEach(el => {
+  const div = +(el.dataset.div || 1);
+  const unit = el.dataset.unit || '';
+  const key = el.dataset.key;
+  const out = document.getElementById('v-' + key);
+  const sync = () => {
+    const val = (+el.value) / div;
+    cfg[key] = val;
+    if (out) {
+      let d = 0;
+      if (div >= 100) d = 3;
+      else if (div >= 10) d = 1;
+      else if (div > 1) d = 2;
+      out.textContent = val.toFixed(d) + unit;
+    }
+  };
+  el.addEventListener('input', sync);
+  sync();
+});
+
+/* 开关按钮 */
+function toggleSwitch(btn) {
+  btn.classList.toggle('on');
+  const on = btn.classList.contains('on');
+  cfg[btn.dataset.toggle] = on;
+  btn.textContent = on ? '[ ON ]' : '[ OFF ]';
+}
+
+/* 单选按钮组 */
+function selectOpt(btn) {
+  const g = btn.dataset.opt;
+  document.querySelectorAll(`.opt-btn[data-opt="${g}"]`).forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  cfg[g] = btn.dataset.value;
+  if (g === 'scope') {
+    const readout = document.getElementById('scope-readout');
+    if (readout) readout.textContent = btn.textContent.trim();
+  }
+}
+
+/* Toast */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1700);
+}
+
+/* 保存 / 重置 */
+function saveConfig() {
+  console.log('XsureZrcnmve Config:', cfg);
+  toast('CONFIG SAVED · ' + new Date().toLocaleTimeString());
+}
+function resetConfig() {
+  const d = { trail: 18, size: 24, decay: 4, density: 100, bloom: 12, burst: 26, force: 10, grav: 6 };
+  document.querySelectorAll('input[type=range]').forEach(el => {
+    if (d[el.dataset.key] !== undefined) {
+      el.value = d[el.dataset.key];
+      el.dispatchEvent(new Event('input'));
+    }
+  });
+  const sw = { persistent: true, pauseFull: true, hideCapture: false, dpi: true };
+  document.querySelectorAll('.switch-btn').forEach(btn => {
+    const on = sw[btn.dataset.toggle];
+    btn.classList.toggle('on', on);
+    btn.textContent = on ? '[ ON ]' : '[ OFF ]';
+    cfg[btn.dataset.toggle] = on;
+  });
+  document.querySelectorAll('.opt-btn[data-opt="scope"]').forEach(b => b.classList.remove('on'));
+  const allBtn = document.querySelector('.opt-btn[data-value="all"]');
+  if (allBtn) allBtn.classList.add('on');
+  cfg.scope = 'all';
+  const readout = document.getElementById('scope-readout');
+  if (readout) readout.textContent = '全部桌面';
+  toast('DEFAULTS RESTORED');
+}
+
+/* ── 粒子画布 ── */
+const canvas = document.getElementById('fx-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let last = { x: 0, y: 0 };
+let pressed = false;
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize); resize();
+
+window.addEventListener('mousedown', () => pressed = true);
+window.addEventListener('mouseup', () => pressed = false);
+
+window.addEventListener('mousemove', e => {
+  if (!cfg.persistent && !pressed) { last = { x: e.clientX, y: e.clientY }; return; }
+  const dx = e.clientX - last.x, dy = e.clientY - last.y;
+  const speed = Math.hypot(dx, dy);
+  last = { x: e.clientX, y: e.clientY };
+  if (speed < 1) return;
+  if (Math.random() > Math.min(1, cfg.density) && speed < 6) return;
+
+  particles.push({
+    x: e.clientX, y: e.clientY,
+    vx: dx * 0.32, vy: dy * 0.32,
+    size: Math.max(0.6, cfg.size * (0.5 + Math.random() * 0.8)),
+    life: 1,
+    type: Math.random() > 0.82 ? 'main' : (Math.random() > 0.9 ? 'grey' : 'auto'),
+    grav: 0
+  });
+});
+
+function burst(x, y) {
+  const n = Math.round(cfg.burst);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = (0.6 + Math.random() * 1.6) * cfg.force * 2.4;
+    particles.push({
+      x, y,
+      vx: Math.cos(a) * sp,
+      vy: Math.sin(a) * sp,
+      size: Math.max(0.8, cfg.size * (0.4 + Math.random())),
+      life: 1,
+      type: Math.random() > 0.55 ? 'main' : 'auto',
+      grav: cfg.grav
+    });
+  }
+}
+
+/* 只在窗口外点击才爆散 */
+window.addEventListener('click', e => {
+  if (e.target.closest('.app-window')) return;
+  burst(e.clientX, e.clientY);
+});
+
+/* 颜色 */
+function colorFor(type, alpha) {
+  const light = document.body.classList.contains('light-mode');
+  if (type === 'main') return light ? `rgba(31,122,224,${alpha})` : `rgba(91,181,255,${alpha})`;
+  if (type === 'grey') return `rgba(150,150,150,${alpha})`;
+  return light ? `rgba(10,11,13,${alpha})` : `rgba(242,244,247,${alpha})`;
+}
+
+/* FPS 与粒子计数 */
+let frames = 0, fpsTime = performance.now();
+const fpsEl = document.getElementById('fps');
+const pcountEl = document.getElementById('pcount');
+
+function render() {
+  requestAnimationFrame(render);
+
+  if (cfg.pauseFull && document.fullscreenElement) {
+    ctx.clearRect(0, 0, W, H);
+    return;
+  }
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (cfg.bloom > 0) {
+    ctx.shadowBlur = cfg.bloom;
+    ctx.shadowColor = document.body.classList.contains('light-mode')
+      ? 'rgba(31,122,224,.55)' : 'rgba(91,181,255,.65)';
+  } else {
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.lineCap = 'round';
+  const trailScale = cfg.trail * 0.18;
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    if (p.grav) p.vy += p.grav;
+    p.vx *= 0.97; p.vy *= 0.97;
+    p.life -= cfg.decay;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x - p.vx * trailScale, p.y - p.vy * trailScale);
+    ctx.lineWidth = p.size;
+    ctx.strokeStyle = colorFor(p.type, Math.min(1, p.life));
+    ctx.stroke();
+  }
+
+  if (particles.length > 1400) particles.splice(0, particles.length - 1400);
+
+  /* 计数 */
+  frames++;
+  const now = performance.now();
+  if (now - fpsTime >= 1000) {
+    fpsEl.textContent = frames;
+    pcountEl.textContent = particles.length;
+    frames = 0; fpsTime = now;
+  }
+}
+render();
+</script>
+</body>
+</html>

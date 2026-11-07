@@ -1,0 +1,17 @@
+#pragma once
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <d3d11.h>
+#include <dxgi1_3.h>
+#include <dcomp.h>
+#include <wrl/client.h>
+#include <string>
+#include <vector>
+#include <mutex>
+#include <thread>
+#include <chrono>
+#include <cmath>
+#include <algorithm>
+#include <fstream>
+#include <sstream>
+#include <memory>

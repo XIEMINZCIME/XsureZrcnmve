@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>XsureZrcnmve — CRT Title</title>
+<style>
+  :root{ --bg:#000; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:var(--bg);overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center}
+
+  /* 16:9 画布，按窗口等比缩放，不改像素块比例 */
+  .frame{
+    position:relative;
+    width:min(100vw, calc(100vh * 1.7778));
+    height:min(100vh, calc(100vw * 0.5625));
+    background:#000;
+    animation:flicker 7s infinite, roll 9s infinite;
+    cursor:crosshair;
+  }
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+
+  /* 第3层：CRT 横向扫描线（细密、半透明，压在字上） */
+  .scanlines{
+    position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,.55) 3px,
+      rgba(0,0,0,.55) 4px);
+    mix-blend-mode:multiply;
+  }
+  /* 第4层：暗角 + 极轻的绿灰偏色，模拟老监视器 */
+  .vignette{
+    position:absolute;inset:0;pointer-events:none;
+    background:
+      radial-gradient(ellipse at 50% 48%, rgba(0,0,0,0) 38%, rgba(0,0,0,.92) 100%),
+      linear-gradient(90deg, rgba(120,140,120,.035), rgba(0,0,0,0) 45%);
+  }
+
+  @keyframes flicker{
+    0%,94%,100%{opacity:1}
+    95%{opacity:.88} 96%{opacity:1} 97%{opacity:.93} 98%{opacity:1}
+  }
+  @keyframes roll{
+    0%,88%,100%{transform:translateY(0)}
+    89%{transform:translateY(2px)} 90%{transform:translateY(-1px)} 91%{transform:translateY(0)}
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <canvas id="screen" width="1280" height="720"></canvas>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+</div>
+
+<script>
+/* ============================================================
+   配置区
+   ============================================================ */
+const CONFIG = {
+  // 主标题：保持不变
+  TITLE_LINES : ['Xsure', 'Zrcnmve'],
+  // 画面最下面那一行（原清档提示位）换成片名
+  BOTTOM_TITLE: 'Final Narrative of Evil',
+  GHOST       : false,   // 原图右侧那张模糊人脸。false = 纯黑负空间，照样吓人
+  TITLE_SCALE : 12,
+  MENU_SCALE  : 4,
+  SMALL_SCALE : 2.5,
+  INK         : '#f2f4ef',
+  NOISE_ALPHA : .34
+};
+
+/* 菜单三项：0 工程存档 / 1 设置(能选中，执行只回 no) / 2 回归现实(退出) */
+const MENU = [
+  'Project Archive',
+  'Settings',
+  'Return to Reality'
+];
+const MENU_Y = 432, ROW_H = 56;
+const SETTINGS_ROW = 1;
+
+/* ---------- 5x7 点阵字模：不依赖任何外部字体/网络 ---------- */
+const FONT = {
+'A':['01110','10001','10001','11111','10001','10001','10001'],
+'B':['11110','10001','10001','11110','10001','10001','11110'],
+'C':['01111','10000','10000','10000','10000','10000','01111'],
+'D':['11110','10001','10001','10001','10001','10001','11110'],
+'E':['11111','10000','10000','11110','10000','10000','11111'],
+'F':['11111','10000','10000','11110','10000','10000','10000'],
+'G':['01111','10000','10000','10111','10001','10001','01111'],
+'H':['10001','10001','10001','11111','10001','10001','10001'],
+'I':['11111','00100','00100','00100','00100','00100','11111'],
+'J':['00111','00010','00010','00010','00010','10010','01100'],
+'K':['10001','10010','10100','11000','10100','10010','10001'],
+'L':['10000','10000','10000','10000','10000','10000','11111'],
+'M':['10001','11011','10101','10101','10001','10001','10001'],
+'N':['10001','11001','10101','10011','10001','10001','10001'],
+'O':['01110','10001','10001','10001','10001','10001','01110'],
+'P':['11110','10001','10001','11110','10000','10000','10000'],
+'Q':['01110','10001','10001','10001','10101','10010','01101'],
+'R':['11110','10001','10001','11110','10100','10010','10001'],
+'S':['01111','10000','10000','01110','00001','00001','11110'],
+'T':['11111','00100','00100','00100','00100','00100','00100'],
+'U':['10001','10001','10001','10001','10001','10001','01110'],
+'V':['10001','10001','10001','10001','10001','01010','00100'],
+'W':['10001','10001','10001','10101','10101','11011','10001'],
+'X':['10001','10001','01010','00100','01010','10001','10001'],
+'Y':['10001','10001','01010','00100','00100','00100','00100'],
+'Z':['11111','00001','00010','00100','01000','10000','11111'],
+'a':['00000','00000','01110','00001','01111','10001','01111'],
+'b':['10000','10000','10110','11001','10001','10001','11110'],
+'c':['00000','00000','01111','10000','10000','10000','01111'],
+'d':['00001','00001','01111','10001','10001','10001','01111'],
+'e':['00000','00000','01110','10001','11111','10000','01111'],
+'f':['00110','01001','01000','11100','01000','01000','01000'],
+'g':['00000','01111','10001','10001','01111','00001','01110'],
+'h':['10000','10000','10110','11001','10001','10001','10001'],
+'i':['00100','00000','00100','00100','00100','00100','00100'],
+'j':['00010','00000','00010','00010','00010','10010','01100'],
+'k':['10000','10000','10010','10100','11000','10100','10010'],
+'l':['11000','01000','01000','01000','01000','01000','11100'],
+'m':['00000','00000','11010','10101','10101','10101','10101'],
+'n':['00000','00000','10110','11001','10001','10001','10001'],
+'o':['00000','00000','01110','10001','10001','10001','01110'],
+'p':['00000','11110','10001','10001','11110','10000','10000'],
+'q':['00000','01111','10001','10001','01111','00001','00001'],
+'r':['00000','00000','10110','11001','10000','10000','10000'],
+'s':['00000','00000','01111','10000','01110','00001','11110'],
+'t':['01000','01000','11100','01000','01000','01001','00110'],
+'u':['00000','00000','10001','10001','10001','10011','01101'],
+'v':['00000','00000','10001','10001','10001','01010','00100'],
+'w':['00000','00000','10001','10001','10101','10101','01010'],
+'x':['00000','00000','10001','01010','00100','01010','10001'],
+'y':['00000','10001','10001','01111','00001','00001','01110'],
+'z':['00000','00000','11111','00010','00100','01000','11111'],
+'0':['01110','10001','10011','10101','11001','10001','01110'],
+'1':['00100','01100','00100','00100','00100','00100','01110'],
+'2':['01110','10001','00001','00010','00100','01000','11111'],
+'3':['11110','00001','00001','01110','00001','00001','11110'],
+'4':['00010','00110','01010','10010','11111','00010','00010'],
+'5':['11111','10000','10000','11110','00001','00001','11110'],
+'6':['00110','01000','10000','11110','10001','10001','01110'],
+'7':['11111','00001','00010','00100','01000','01000','01000'],
+'8':['01110','10001','10001','01110','10001','10001','01110'],
+'9':['01110','10001','10001','01111','00001','00010','01100'],
+' ':['00000','00000','00000','00000','00000','00000','00000'],
+'.':['00000','00000','00000','00000','00000','01100','01100'],
+':':['00000','01100','01100','00000','01100','01100','00000'],
+'>':['10000','01000','00100','00010','00100','01000','10000'],
+'/':['00001','00001','00010','00100','01000','10000','10000'],
+'-':['00000','00000','00000','11111','00000','00000','00000'],
+'!':['00100','00100','00100','00100','00100','00000','00100'],
+'?':['01110','10001','00001','00010','00100','00000','00100'],
+',':['00000','00000','00000','00000','01100','01100','01000'],
+"'":['00100','00100','00000','00000','00000','00000','00000'],
+'_':['00000','00000','00000','00000','00000','00000','11111'],
+'(':['00010','00100','01000','01000','01000','00100','00010'],
+')':['01000','00100','00010','00010','00010','00100','01000']
+};
+
+/* ---------- 绘制基元 ---------- */
+const cv = document.getElementById('screen');
+const ctx = cv.getContext('2d', {alpha:false});
+const W = cv.width, H = cv.height;
+
+function glyph(ch){ return FONT[ch] || FONT[ch.toUpperCase()] || FONT['?']; }
+function textW(str, s, gap=1){ return str.length * (5+gap) * s - gap*s; }
+function drawText(str, x, y, s, color, gap=1){
+  ctx.fillStyle = color || CONFIG.INK;
+  for(let i=0;i<str.length;i++){
+    const g = glyph(str[i]);
+    const ox = x + i*(5+gap)*s;
+    for(let r=0;r<7;r++) for(let c=0;c<5;c++)
+      if(g[r][c]==='1') ctx.fillRect(ox + c*s, y + r*s, s, s);
+  }
+}
+
+/* ---------- 第2层：低分辨率雪花 + 缓慢下移的 tracking 亮带 ---------- */
+const noise = document.createElement('canvas');
+noise.width = 320; noise.height = 180;
+const nctx = noise.getContext('2d');
+function refreshNoise(){
+  const img = nctx.createImageData(320,180);
+  const d = img.data;
+  for(let i=0;i<d.length;i+=4){
+    const v = Math.random()*255|0;
+    d[i]=d[i+1]=d[i+2]=v;
+    d[i+3] = Math.random()<.5 ? 20 : 7;
+  }
+  nctx.putImageData(img,0,0);
+}
+refreshNoise();
+
+let frame = 0, band = -120, nextBand = 120, bannerMsg = '', bannerUntil = 0, sel = 0;
+let settingsNo = false;   // Settings 执行后显示的副标题 "no"
+function flash(msg, ms=1400){ bannerMsg = msg; bannerUntil = performance.now() + ms; }
+
+/* ---------- "回归现实"：一种退出，按载体走不同通道 ---------- */
+function returnToReality(){
+  // 手机 apk：WebView / Cordova 注入的原生退出接口
+  try{
+    if(window.Android && typeof window.Android.exitApp === 'function'){ window.Android.exitApp(); return; }
+    if(window.Android && typeof window.Android.close === 'function'){ window.Android.close(); return; }
+    if(navigator.app && typeof navigator.app.exitApp === 'function'){ navigator.app.exitApp(); return; }
+  }catch(e){}
+  // 电脑 exe：Electron / pywebview / 本地 shell 里 window.close() 会真关窗
+  try{ window.close(); }catch(e){}
+  // 普通浏览器拦 close，给一条伪系统回显（画面风格内）
+  flash('EXIT BLOCKED. RUN phone.apk / PC.exe TO LEAVE.', 2200);
+}
+
+/* ---------- 选中项确认 ---------- */
+function confirmSel(){
+  if(sel === SETTINGS_ROW){ settingsNo = true; return; } // 没更新：只回一个副标题 "no"
+  settingsNo = false;
+  if(sel === 2){ returnToReality(); return; }  // 回归现实 = 退出
+  flash('LOADING PROJECT ARCHIVE...', 1200);   // 工程存档
+}
+
+function render(t){
+  frame++;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0,0,W,H);
+
+  /* 可选：原图右侧那团模糊人形。关掉后这里就是纯黑负空间 */
+  if(CONFIG.GHOST){
+    const g = ctx.createRadialGradient(960,340,20,960,340,300);
+    g.addColorStop(0,'rgba(190,200,180,.16)');
+    g.addColorStop(.55,'rgba(120,135,115,.06)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(660,40,600,640);
+  }
+
+  /* 主标题：XsureZrcnmve，保持不变 */
+  const ts = CONFIG.TITLE_SCALE;
+  CONFIG.TITLE_LINES.forEach((line,i)=>{
+    drawText(line, 36, 32 + i*(ts*8), ts, CONFIG.INK, 1);
+  });
+
+  /* 菜单：三项全部可选中，闪烁光标会停在 Settings 上 */
+  const ms = CONFIG.MENU_SCALE, mx = 36;
+  const cursor = (Math.floor(t/480) % 2) === 0;
+  MENU.forEach((label,i)=>{
+    drawText((sel===i && cursor ? '>>' : '  ') + label,
+             mx, MENU_Y + i*ROW_H, ms);
+  });
+
+  /* Settings 执行后的副标题：no（还没更新，所以没有内容） */
+  if(settingsNo){
+    drawText('   no', mx, MENU_Y + ROW_H + 32,
+             CONFIG.SMALL_SCALE, 'rgba(242,244,239,.72)');
+  }
+
+  /* 底部：版本号（不变） + 最下面那行标题 = Final Narrative of Evil */
+  drawText('V 1.145', 24, 686, CONFIG.SMALL_SCALE, 'rgba(242,244,239,.8)');
+  const line = (bannerMsg && t < bannerUntil) ? bannerMsg : CONFIG.BOTTOM_TITLE;
+  drawText(line, (W - textW(line, CONFIG.SMALL_SCALE))/2, 686,
+           CONFIG.SMALL_SCALE, 'rgba(242,244,239,.8)');
+
+  /* tracking 亮带 */
+  band += 1.1;
+  if(band > H + 60){ band = -120; nextBand = 180 + Math.random()*300; }
+  if(band > -60){
+    ctx.fillStyle='rgba(255,255,255,.035)';
+    ctx.fillRect(0, band, W, 34);
+    ctx.fillStyle='rgba(255,255,255,.06)';
+    ctx.fillRect(0, band+34, W, 2);
+  }
+
+  /* 雪花最后叠上去，连文字一起劣化 */
+  if(frame % 3 === 0) refreshNoise();
+  ctx.globalAlpha = CONFIG.NOISE_ALPHA;
+  ctx.drawImage(noise, 0, 0, W, H);
+  ctx.globalAlpha = 1;
+
+  /* 偶发整行错位：模拟信号丢行 */
+  if(Math.random() < .006){
+    const y = Math.random()*H|0, h = 6 + Math.random()*18|0, dx = (Math.random()-.5)*14|0;
+    ctx.drawImage(cv, 0, y, W, h, dx, y, W, h);
+  }
+
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+/* ---------- 交互：↑↓ 三项循环 / Enter 确认 / 长按 Delete 清档 ---------- */
+let delTimer = null;
+addEventListener('keydown', e=>{
+  if(e.key==='ArrowDown'){ sel = (sel + 1) % MENU.length; settingsNo = false; e.preventDefault(); }
+  if(e.key==='ArrowUp'){   sel = (sel + MENU.length - 1) % MENU.length; settingsNo = false; e.preventDefault(); }
+  if(e.key==='Enter') confirmSel();
+  if(e.key==='Delete' && !delTimer){
+    delTimer = setTimeout(()=>{ flash('ALL DATA RESET.', 900); }, 1200);
+  }
+});
+addEventListener('keyup', e=>{
+  if(e.key==='Delete'){ clearTimeout(delTimer); delTimer=null; }
+});
+document.querySelector('.frame').addEventListener('click', e=>{
+  const r = e.currentTarget.getBoundingClientRect();
+  const py = (e.clientY - r.top) / r.height * H;
+  const row = Math.floor((py - MENU_Y) / ROW_H);
+  if(row >= 0 && row < MENU.length){
+    if(sel === row) confirmSel();                  // 再点已选中项 = 确认
+    else { sel = row; settingsNo = false; }        // Settings 也能选中
+  }
+});
+</script>
+</body>
+</html>

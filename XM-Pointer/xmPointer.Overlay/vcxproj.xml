@@ -1,0 +1,7 @@
+<ItemGroup>
+  <ClCompile Include="main.cpp" />
+  <ClCompile Include="MouseHook.cpp" />    <!-- 新增 -->
+</ItemGroup>
+<ItemGroup>
+  <ClInclude Include="MouseHook.h" />      <!-- 新增 -->
+</ItemGroup>

@@ -1,0 +1,28 @@
+# ---- IDE / 编辑器缓存 ----
+.vs/
+*.suo
+*.user
+
+# ---- 构建产物（无对应源码，单独分发）----
+*.exe
+*.zip
+
+# ---- 大型 3D / 二进制美术资源（不进源码仓库）----
+*.glb
+*.vrm
+*.blend
+*.blend1
+*.fbx
+
+# ---- 备份 / 临时 / 日志 ----
+*.bak
+*.png.bak
+bug.txt
+
+# ---- 构建 / 缓存产物 ----
+__pycache__/
+*.pyc
+obj/
+bin/
+*.cache
+*.userosscache

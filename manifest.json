@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "engine": "XsureZrcnmve",
+  "engine_version": "3.0.0",
+  "entry": "Core_Dimension/index.html",
+  "base_resolution": { "width": 1280, "height": 720 },
+  "platform": "windows-desktop",
+  "runtime": "WPF-WebView2",
+  "default_story": "",
+  "notes": "入口已由主理人确认并固化为 3.0 正式入口"
+}

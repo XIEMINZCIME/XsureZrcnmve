@@ -1,0 +1,23 @@
+{
+  "trail": {
+    "width": 18,
+    "particleSize": 2.4,
+    "decay": 0.04,
+    "density": 1,
+    "bloom": 12
+  },
+  "burst": {
+    "count": 26,
+    "force": 1,
+    "gravity": 0.06
+  },
+  "behavior": {
+    "persistentTrail": true,
+    "pauseOnFullscreen": true,
+    "hideInCapture": false
+  },
+  "display": {
+    "mixedDpi": true,
+    "scope": "all"
+  }
+}

@@ -1,0 +1,11 @@
+<Window x:Class="XsureZrcnmve.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="XsureZrcnmve" Height="720" Width="1280"
+        WindowStartupLocation="CenterScreen" Background="#111111" WindowStyle="None">
+	<Grid>
+		<!-- 这个就是用来显示你界面的内置浏览器 -->
+		<wv2:WebView2 x:Name="WebViewUI" />
+	</Grid>
+</Window>

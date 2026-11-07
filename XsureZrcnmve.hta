@@ -1,0 +1,1902 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=9">
+    <title>XsureZrcnmve</title>
+    <HTA:APPLICATION 
+        ID="oHTA"
+        APPLICATIONNAME="XsureZrcnmve"
+        BORDER="thin"
+        CAPTION="yes"
+        SHOWINTASKBAR="yes"
+        SINGLEINSTANCE="yes"
+        WINDOWSTATE="normal"
+        SCROLL="no"
+        INNERBORDER="no"
+        MAXIMIZEBUTTON="yes"
+        MINIMIZEBUTTON="yes" ICON="xzc.ico">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -ms-user-select: none; user-select: none; }
+        /* 强制设定窗口大小，不再强行全屏 */
+        body { width: 100%; height: 100%; background: #111111; overflow: hidden; font-family: 'Microsoft YaHei', sans-serif; color: white; }
+        
+        /* 左侧观测者列表 */
+        #sidebar { position: absolute; left: 0; top: 0; width: 250px; height: 100%; background: #0A0C10; border-right: 1px solid #223; padding: 20px; }
+        .title { font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 20px; color: #A0B0D0; }
+        .friend { margin-bottom: 15px; }
+        .friend-name { font-size: 15px; color: #E0E5FF; }
+        .friend-status { font-size: 12px; color: #667; margin-top: 3px; }
+
+        /* 右侧主区域 */
+        #main { position: absolute; left: 250px; top: 0; right: 0; bottom: 0; }
+        
+        /* 3D渲染背景 */
+        #render-area { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: radial-gradient(circle, #1A1C23 0%, #111111 100%); }
+        .ring { position: absolute; left: 50%; top: 50%; margin-left: -75px; margin-top: -75px; width: 150px; height: 150px; border: 2px solid #3A5FBC; border-radius: 50%; border-top-color: transparent; animation: spin 2s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* 底部对话框 */
+        #dialogue-box { position: absolute; bottom: 30px; left: 5%; width: 90%; height: 160px; background: rgba(20, 25, 40, 0.85); border: 1px solid rgba(100, 150, 255, 0.3); border-radius: 12px; padding: 35px; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #speaker { position: absolute; top: -18px; left: 30px; background: #3A5FBC; padding: 6px 20px; border-radius: 15px; font-weight: bold; font-size: 16px; letter-spacing: 1px; }
+        #text { font-size: 20px; line-height: 1.8; color: #E0E5FF; text-shadow: 1px 1px 2px #000; }
+        
+        /* 右上角安全退出按钮 */
+        #exit-btn { position: absolute; top: 15px; right: 20px; background: #FF3333; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; z-index: 999; }
+        #exit-btn:hover { background: #CC0000; }
+        /* 启动序列：四张 logo 依次居中，工作室 logo 压轴（z-index 9999 盖住 z-index 999 的退出按钮） */
+        #splash { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #000; z-index: 9999; overflow: hidden; }
+        #splash-img { position: absolute; display: block; border: 0; opacity: 0; filter: alpha(opacity=0); }
+        /* 主界面（主菜单）：1280x720 CRT Canvas 像素稿，JS 等比居中，扫描线/暗角画进 canvas */
+        #mainmenu { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #000; z-index: 9998; display: none; overflow: hidden; }
+        #menu-frame { position: absolute; overflow: hidden; background: #000; cursor: crosshair; }
+        #menu-canvas { position: absolute; left: 0; top: 0; display: block; border: 0; }
+        #menu-hint { position: absolute; display: none; color: #FFFFFF; font-family: monospace; font-size: 20px; letter-spacing: 2px; }
+        /* V1.16 更新内容横幅：用 DOM 文本呈现（中文无法走 Canvas 5x7 字模），6.5 秒后由 JS 隐藏 */
+        #changelog { position: absolute; left: 0; right: 0; bottom: 70px; display: none; color: #f2f4ef; font-family: 'Microsoft YaHei', monospace; font-size: 15px; line-height: 1.6; text-align: center; z-index: 9999; pointer-events: none; }
+        #changelog .cl-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; color: #fff4cc; }
+        /* V1.165 全局设置终端（XM-Pointer 风格 · 黑白为主 · 兼容 Trident / IE9：不用 flex / min / calc / inset） */
+        #settings-panel { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 10000; }
+        .sp-backdrop { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.72); }
+        .sp-window {
+            position: absolute; left: 50%; top: 50%; margin-left: -400px; margin-top: -280px;
+            width: 800px; height: 560px; background: rgba(8,8,8,0.94);
+            border: 1px solid rgba(255,255,255,0.20); color: #f0f0f0;
+            font-family: 'Microsoft YaHei', sans-serif; box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+        }
+        .sp-titlebar { position: absolute; left: 0; top: 0; right: 0; height: 50px; border-bottom: 1px solid rgba(255,255,255,0.16); font-family: 'Courier New', monospace; }
+        .sp-dots { position: absolute; left: 16px; top: 18px; }
+        .sp-dots i { display: inline-block; width: 9px; height: 9px; background: #555; border-radius: 50%; margin-right: 6px; }
+        .sp-title { position: absolute; left: 60px; top: 0; line-height: 50px; font-size: 12px; font-weight: 900; letter-spacing: 2px; }
+        .sp-title .sp-ver { font-size: 10px; color: #aaa; }
+        .sp-status { position: absolute; left: 300px; top: 0; line-height: 50px; font-size: 10px; letter-spacing: 1.5px; color: #aaa; font-weight: bold; }
+        .sp-status .sp-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #cccccc; margin-right: 7px; box-shadow: 0 0 0 3px rgba(255,255,255,0.12); vertical-align: middle; }
+        .sp-theme { position: absolute; right: 16px; top: 12px; background: transparent; border: 1px solid rgba(255,255,255,0.30); color: #f0f0f0; cursor: pointer; font-family: 'Courier New', monospace; font-size: 10px; padding: 5px 10px; letter-spacing: 1px; }
+        .sp-theme:hover { background: rgba(255,255,255,0.12); }
+        .sp-body { position: absolute; left: 0; top: 50px; right: 0; bottom: 38px; }
+        /* 导航改为横向：←/→ 在标签间左右移动选择 */
+        .sp-nav { position: absolute; left: 0; top: 0; right: 0; height: 46px; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.16); padding: 7px 12px; overflow-x: auto; white-space: nowrap; }
+        .sp-nav-item { display: inline-block; width: auto; text-align: left; background: transparent; border: 1px solid transparent; color: #cfcfcf; cursor: pointer; padding: 9px 14px; font-family: 'Microsoft YaHei', sans-serif; font-size: 14px; border-radius: 6px; margin-right: 8px; vertical-align: middle; }
+        .sp-nav-item .idx { font-family: 'Courier New', monospace; font-size: 11px; color: #888; margin-right: 10px; }
+        .sp-nav-item.active { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.6); color: #fff; }
+        .sp-nav-item.active .idx { color: #fff; }
+        .sp-content { position: absolute; left: 0; top: 46px; right: 0; bottom: 0; padding: 22px 26px; overflow: auto; }
+        .sp-pane { display: none; }
+        .sp-pane.active { display: block; }
+        .sp-pane-title { font-family: 'Courier New', monospace; font-size: 13px; letter-spacing: 2px; color: #fff; margin-bottom: 18px; font-weight: bold; }
+        .sp-switch-row { display: block; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .sp-switch-label { font-size: 15px; color: #f0f0f0; }
+        .sp-switch-sub { font-size: 11px; color: #999; margin-top: 3px; }
+        .sp-switch-btn { float: right; margin-top: -28px; background: transparent; border: 1px solid rgba(255,255,255,0.30); color: #f0f0f0; cursor: pointer; font-family: 'Courier New', monospace; font-size: 11px; padding: 6px 12px; letter-spacing: 1px; }
+        .sp-switch-btn.on { background: #f0f0f0; border-color: #f0f0f0; color: #000; }
+        .sp-btn-group { display: block; }
+        .sp-opt-btn { display: inline-block; background: transparent; border: 1px solid rgba(255,255,255,0.30); color: #cfcfcf; cursor: pointer; font-size: 13px; padding: 9px 16px; border-radius: 6px; margin-right: 10px; }
+        .sp-opt-btn.on { background: #f0f0f0; border-color: #f0f0f0; color: #000; }
+        .sp-info { margin-top: 16px; font-size: 12px; color: #999; line-height: 1.7; }
+        .sp-info::before { content: '> '; color: #777; }
+        .sp-about { font-size: 14px; line-height: 1.9; color: #e0e0e0; }
+        .sp-about b { color: #fff; }
+        .sp-statusbar { position: absolute; left: 0; right: 0; bottom: 0; height: 38px; border-top: 1px solid rgba(255,255,255,0.16); font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px; color: #999; }
+        .sp-statusbar span { position: absolute; top: 12px; }
+        .sp-statusbar .sp-foot { right: 16px; color: #777; }
+        .sp-statusbar span:first-child { left: 16px; }
+        body.sp-light { background: #f2f2f2; }
+        body.sp-light .sp-window { background: rgba(250,250,250,0.97); color: #111; }
+        body.sp-light .sp-nav-item { color: #555; }
+        body.sp-light .sp-nav-item.active { background: rgba(0,0,0,0.10); color: #000; }
+        body.sp-light .sp-pane-title, body.sp-light .sp-status, body.sp-light .sp-title .sp-ver { color: #222; }
+        body.sp-light .sp-switch-label, body.sp-light .sp-about { color: #111; }
+        body.sp-light .sp-switch-sub, body.sp-light .sp-info, body.sp-light .sp-statusbar, body.sp-light .sp-theme { color: #666; }
+        .sp-statusbar .sp-bgm { right: 210px; color: #888; }
+
+        /* V1.165 列表页面（控制终端风格 · 参考 xiemi.eu.cc/min 与游戏读档列表） */
+        #list-page { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 10001; }
+        .lp-backdrop { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.72); }
+        .lp-window {
+            position: absolute; left: 50%; top: 50%; margin-left: -400px; margin-top: -280px;
+            width: 800px; height: 560px; background: rgba(8,8,8,0.96);
+            border: 1px solid rgba(255,255,255,0.20); color: #f0f0f0;
+            font-family: 'Microsoft YaHei', sans-serif; box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+        }
+        .lp-titlebar { position: absolute; left: 0; top: 0; right: 0; height: 50px; border-bottom: 1px solid rgba(255,255,255,0.16); font-family: 'Courier New', monospace; }
+        .lp-dots { position: absolute; left: 16px; top: 18px; }
+        .lp-dots i { display: inline-block; width: 9px; height: 9px; background: #555; border-radius: 50%; margin-right: 6px; }
+        .lp-title { position: absolute; left: 60px; top: 0; line-height: 50px; font-size: 12px; font-weight: 900; letter-spacing: 2px; }
+        .lp-title .lp-ver { font-size: 10px; color: #aaa; }
+        .lp-status { position: absolute; left: 360px; top: 0; line-height: 50px; font-size: 10px; letter-spacing: 1.5px; color: #aaa; font-weight: bold; }
+        .lp-status .lp-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #cccccc; margin-right: 7px; box-shadow: 0 0 0 3px rgba(255,255,255,0.12); vertical-align: middle; }
+        .lp-bgm { position: absolute; right: 16px; top: 0; line-height: 50px; font-size: 10px; letter-spacing: 1px; color: #888; }
+        .lp-body { position: absolute; left: 0; top: 50px; right: 0; bottom: 38px; padding: 22px 26px; overflow: auto; }
+        .lp-pane-title { font-family: 'Courier New', monospace; font-size: 13px; letter-spacing: 2px; color: #fff; margin-bottom: 16px; font-weight: bold; }
+        .lp-row { display: block; padding: 14px 14px; border: 1px solid transparent; border-radius: 6px; margin-bottom: 8px; cursor: pointer; color: #cfcfcf; }
+        .lp-row .lp-idx { font-family: 'Courier New', monospace; font-size: 12px; color: #888; margin-right: 14px; }
+        .lp-row .lp-label { font-size: 15px; color: #f0f0f0; letter-spacing: 1px; }
+        .lp-row .lp-sub { font-size: 11px; color: #999; margin-left: 12px; }
+        .lp-row .lp-arrow { float: right; color: #777; font-family: 'Courier New', monospace; }
+        .lp-row.active { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.6); color: #fff; }
+        .lp-row.active .lp-idx, .lp-row.active .lp-label { color: #fff; }
+        .lp-statusbar { position: absolute; left: 0; right: 0; bottom: 0; height: 38px; border-top: 1px solid rgba(255,255,255,0.16); font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px; color: #999; }
+        .lp-statusbar span { position: absolute; top: 12px; }
+        .lp-statusbar .lp-foot { right: 16px; color: #777; }
+        .lp-statusbar span:first-child { left: 16px; }
+    </style>
+</head>
+<body>
+
+    <!-- 启动序列：① 作品图标 → ② 作者概念图 → ③ 组织发行 → ④ 工作室 logo，依次居中（点击任意处可跳过） -->
+    <div id="splash">
+        <img id="splash-img" src="xz.jpg" alt="作品图标">
+    </div>
+
+    <!-- 主界面：ui.html 的 CRT Canvas 像素菜单（内部 1280x720，JS 等比缩放） -->
+    <div id="mainmenu">
+        <div id="menu-frame">
+            <canvas id="menu-canvas" width="1280" height="720"></canvas>
+            <div id="menu-hint">NO SAVE DATA</div>
+        </div>
+    </div>
+
+    <!-- V1.16 更新内容横幅（进入主菜单后显示 6.5 秒） -->
+    <div id="changelog"></div>
+
+    <!-- 安全退出按钮 -->
+    <button id="exit-btn" onclick="window.close()">退出观测</button>
+
+    <!-- 左侧列表 -->
+    <div id="sidebar">
+        <div class="title">观测者阵列</div>
+        <div class="friend">
+            <div class="friend-name">阝牙</div>
+            <div class="friend-status">正在观测</div>
+        </div>
+        <div class="friend">
+            <div class="friend-name">大肥鱼</div>
+            <div class="friend-status">冥思中</div>
+        </div>
+    </div>
+
+    <!-- 右侧主区域 -->
+    <div id="main">
+        <div id="render-area">
+            <div class="ring"></div>
+        </div>
+        
+        <!-- 对话框 -->
+        <div id="dialogue-box">
+            <div id="speaker">系统</div>
+            <div id="text"></div>
+        </div>
+    </div>
+
+    <!-- V1.165 全局设置终端（XM-Pointer 风格）：主界面 Settings 打开，关于（默认）位于列表下方 -->
+    <div id="settings-panel" style="display:none;">
+      <div class="sp-backdrop" onclick="spCloseSettings()"></div>
+      <div class="sp-window">
+        <div class="sp-titlebar">
+          <div class="sp-dots"><i></i><i></i><i></i></div>
+          <div class="sp-title">XSURE · [ SETTINGS ] <span class="sp-ver">V1.166</span></div>
+          <div class="sp-status"><span class="sp-dot"></span>SETTINGS</div>
+          <button class="sp-theme" onclick="spToggleTheme()">[ REVERSE ]</button>
+        </div>
+        <div class="sp-body">
+          <nav class="sp-nav">
+            <button class="sp-nav-item" data-pane="display" onclick="spSwitchPane(this)"><span class="idx">01</span><span class="label">显示</span></button>
+            <button class="sp-nav-item" data-pane="safety" onclick="spSwitchPane(this)"><span class="idx">02</span><span class="label">视觉安全</span></button>
+            <button class="sp-nav-item" data-pane="theme" onclick="spSwitchPane(this)"><span class="idx">03</span><span class="label">主题</span></button>
+            <button class="sp-nav-item active" data-pane="about" onclick="spSwitchPane(this)"><span class="idx">04</span><span class="label">关于</span></button>
+          </nav>
+          <main class="sp-content">
+            <section class="sp-pane" data-pane="display">
+              <div class="sp-pane-title">DISPLAY · 显示</div>
+              <div class="sp-switch-row">
+                <div><div class="sp-switch-label">全屏模式 (F4)</div><div class="sp-switch-sub">像 Minecraft 那样进入全屏</div></div>
+                <button class="sp-switch-btn" data-toggle="fullscreen" onclick="spToggleSwitch(this)">[ OFF ]</button>
+              </div>
+              <div class="sp-switch-row">
+                <div><div class="sp-switch-label">启动更新横幅</div><div class="sp-switch-sub">进入主菜单后显示 6.5 秒更新内容</div></div>
+                <button class="sp-switch-btn on" data-toggle="changelog" onclick="spToggleSwitch(this)">[ ON ]</button>
+              </div>
+            </section>
+            <section class="sp-pane" data-pane="safety">
+              <div class="sp-pane-title">SAFETY · 视觉安全</div>
+              <div class="sp-switch-row">
+                <div><div class="sp-switch-label">减少动态效果</div><div class="sp-switch-sub">关闭闪烁 / 扫描线抖动 / 信号丢行，降低光敏性刺激</div></div>
+                <button class="sp-switch-btn" data-toggle="safe" onclick="spToggleSwitch(this)">[ OFF ]</button>
+              </div>
+              <div class="sp-switch-row">
+                <div><div class="sp-switch-label">噪点叠加</div><div class="sp-switch-sub">CRT 雪花噪点（关闭后画面更干净）</div></div>
+                <button class="sp-switch-btn on" data-toggle="noise" onclick="spToggleSwitch(this)">[ ON ]</button>
+              </div>
+              <div class="sp-info">本设置面向光敏性用户，开启「减少动态」会显著削弱主菜单 CRT 视觉特效。</div>
+            </section>
+            <section class="sp-pane" data-pane="theme">
+              <div class="sp-pane-title">THEME · 主题</div>
+              <div class="sp-btn-group">
+                <button class="sp-opt-btn on" data-opt="theme" data-value="dark" onclick="spSelectOpt(this)">深空黑</button>
+                <button class="sp-opt-btn" data-opt="theme" data-value="light" onclick="spSelectOpt(this)">明亮</button>
+              </div>
+              <div class="sp-info">主题会实时套用到设置终端；主菜单为 CRT 像素风，不受主题影响。</div>
+            </section>
+            <section class="sp-pane active" data-pane="about">
+              <div class="sp-pane-title">ABOUT · 关于</div>
+              <div class="sp-about">
+                <b>XsureZrcnmve</b><br>
+                致此人之冥，刻意无维。<br><br>
+                › 版本: <b>V 1.166</b><br>
+                › 设置 UI: <b>XM-Pointer</b>（用户自研）<br>
+                › 引擎: <b>HTA / Trident (IE9)</b><br>
+                › 运行: <b>exe 主要 · hta 备用 · cmd 副</b><br><br>
+                本页为全局设置终端，参数实时生效。
+              </div>
+            </section>
+          </main>
+        </div>
+        <div class="sp-statusbar">
+          <span>←/→ 选择 · Z 确认 · X 关闭</span>
+          <span class="sp-bgm">BGM: Narvik Snow</span>
+          <span class="sp-foot">XSURE / ZRCNMVE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- V1.165 列表导航页（控制终端风格 · 参考 xiemi.eu.cc/min 与游戏读档列表） -->
+    <div id="list-page" style="display:none;">
+      <div class="lp-backdrop" onclick="lpClose()"></div>
+      <div class="lp-window">
+        <div class="lp-titlebar">
+          <div class="lp-dots"><i></i><i></i><i></i></div>
+          <div class="lp-title">[ SYSTEM_MENU ] <span class="lp-ver">V1.166</span></div>
+          <div class="lp-status"><span class="lp-dot"></span>LIST</div>
+          <div class="lp-bgm">BGM: Narvik Snow</div>
+        </div>
+        <div class="lp-body">
+          <div class="lp-pane-title">INDEX · 列表导航 <span id="lp-time" style="float:right;color:#888;"></span></div>
+          <div id="lp-list">
+            <div class="lp-row" data-act="archive"><span class="lp-idx">01</span><span class="lp-label">PROJECT ARCHIVE</span><span class="lp-sub">项目归档 / 存档列表</span><span class="lp-arrow">›</span></div>
+            <div class="lp-row" data-act="settings"><span class="lp-idx">02</span><span class="lp-label">SETTINGS</span><span class="lp-sub">全局设置终端</span><span class="lp-arrow">›</span></div>
+            <div class="lp-row" data-act="fullscreen"><span class="lp-idx">03</span><span class="lp-label">FULLSCREEN</span><span class="lp-sub">切换全屏 (F4)</span><span class="lp-arrow">›</span></div>
+            <div class="lp-row" data-act="reality"><span class="lp-idx">04</span><span class="lp-label">RETURN TO REALITY</span><span class="lp-sub">退出观测</span><span class="lp-arrow">›</span></div>
+          </div>
+        </div>
+        <div class="lp-statusbar">
+          <span>↑/↓ 选择 · Z 进入 · X 关闭</span>
+          <span class="lp-foot">XSURE / ZRCNMVE</span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+        // ===== 启动序列：① 作品图标 → ② 作者概念图 → ③ 组织发行 → ④ xiemi 工作室 logo 压轴，均居中 =====
+        // 四张素材与 HTA 同目录，使用相对路径，工程整体搬移可用
+        var SPLASH_STEPS = [
+            { src: "xz.jpg",          alt: "作品图标",       w: 1280, h: 750,  maxScale: 1.0, fit: 0.78 },
+            { src: "ga.jpg",          alt: "作者概念图",     w: 64,   h: 64,   maxScale: 4.0, fit: 0.40 },
+            { src: "xieminzcime.jpg", alt: "组织发行",       w: 300,  h: 80,   maxScale: 3.0, fit: 0.72 },
+            { src: "qidoy.jpg",       alt: "xiemi 工作室",   w: 1920, h: 1072, maxScale: 1.0, fit: 0.98 }
+        ];
+        var STEP_HOLD_MS = 1100;        // 每张停留时长
+        var FADE_STEPS = 8;             // 淡入 / 淡出步数
+        var FADE_STEP_MS = 30;          // 每步间隔
+        var SEQUENCE_GUARD_MS = 14000;  // 整段序列兜底，绝不卡死（四段约 6.3s + 启动延迟）
+        var splashEl = document.getElementById("splash");
+        var splashImg = document.getElementById("splash-img");
+        var splashDone = false;         // 防重入：跳过 / 自动结束只触发一次
+        var stepIndex = 0;
+        var fadeTimer = null;
+        var holdTimer = null;
+        var guardTimer = null;
+
+        // IE9 不支持 object-fit / background-size，改用 JS 等比缩放 + 绝对居中
+        function fitSplashImage() {
+            var step = SPLASH_STEPS[stepIndex];
+            if (!step) { return; }
+            var ww = document.documentElement.clientWidth;
+            var wh = document.documentElement.clientHeight;
+            if (!ww || !wh) { ww = 1024; wh = 768; }
+            var scale = Math.min(ww * step.fit / step.w, wh * step.fit / step.h);
+            if (scale > step.maxScale) { scale = step.maxScale; }
+            var w = Math.floor(step.w * scale);
+            var h = Math.floor(step.h * scale);
+            if (w < 1) { w = 1; }
+            if (h < 1) { h = 1; }
+            splashImg.style.width = w + "px";
+            splashImg.style.height = h + "px";
+            splashImg.style.left = Math.floor((ww - w) / 2) + "px";
+            splashImg.style.top = Math.floor((wh - h) / 2) + "px";
+        }
+
+        // 同时写 style.opacity 与 IE alpha 滤镜兜底（不用 CSS transition/animation）
+        // 只作用于图片层，#000 黑底始终盖住终端
+        function setImgOpacity(value) {
+            var n = Math.round(value * 100);
+            splashImg.style.opacity = String(value);
+            splashImg.style.filter = "alpha(opacity=" + n + ")";
+        }
+
+        // JS 步进淡入 / 淡出：dir = 1 淡入、0 淡出，结束后回调
+        function fadeImage(dir, callback) {
+            var step = 0;
+            if (fadeTimer !== null) { clearInterval(fadeTimer); fadeTimer = null; }
+            setImgOpacity(dir ? 0 : 1);
+            fadeTimer = setInterval(function() {
+                step++;
+                var v = dir ? step / FADE_STEPS : (FADE_STEPS - step) / FADE_STEPS;
+                if (v < 0) { v = 0; }
+                if (v > 1) { v = 1; }
+                setImgOpacity(v);
+                if (step >= FADE_STEPS) {
+                    clearInterval(fadeTimer);
+                    fadeTimer = null;
+                    if (callback) { callback(); }
+                }
+            }, FADE_STEP_MS);
+        }
+
+        function finishSplash() {
+            if (splashDone) { return; }
+            splashDone = true;
+            if (fadeTimer !== null) { clearInterval(fadeTimer); fadeTimer = null; }
+            if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null; }
+            if (guardTimer !== null) { clearTimeout(guardTimer); guardTimer = null; }
+            splashEl.style.display = "none";
+            showMainMenu();          // 序列结束后先进入主界面（主菜单）
+        }
+
+        function endSplash() {
+            finishSplash();             // 结束启动序列（保留函数：当前启动页不可跳过，无跳过调用方）
+        }
+
+        function showStep(i) {
+            if (splashDone) { return; }
+            if (i >= SPLASH_STEPS.length) { finishSplash(); return; }
+            stepIndex = i;
+            var step = SPLASH_STEPS[i];
+            splashImg.alt = step.alt;
+            splashImg.style.display = "block";
+            splashImg.src = step.src;
+            fitSplashImage();
+            fadeImage(1, function() {          // 淡入
+                if (splashDone) { return; }
+                holdTimer = setTimeout(function() {
+                    if (splashDone) { return; }
+                    fadeImage(0, function() {  // 淡出
+                        if (splashDone) { return; }
+                        showStep(i + 1);
+                    });
+                }, STEP_HOLD_MS);
+            });
+        }
+
+        // ===== 主界面（主菜单）：ui.html 的 CRT 像素菜单，IE9 兼容 Canvas 2D 重写 =====
+        // 内部分辨率固定 1280x720，显示尺寸由 fitMenuFrame / layoutMenuCanvas 用 JS 等比设置；
+        // 扫描线、暗角、偏色全部预绘到离屏 canvas 再叠上去，flicker / roll 用 JS 定时器
+        // 改容器 style.opacity（双写 alpha 滤镜兜底）与画布 style.top，不新增任何 CSS3 声明。
+        // 全部使用 var 与 function 表达式，时间源统一 Date.now()，逐帧调度统一 setTimeout。
+        var MENU_CANVAS_W = 1280;
+        var MENU_CANVAS_H = 720;
+        var MENU_Y = 432;
+        var ROW_H = 56;
+        var SETTINGS_ROW = 1;
+        var RETURN_ROW = 2;
+        var LIST_ROW = 3;
+
+        var MENU_CONFIG = {
+            TITLE_LINES: ['Xsure', 'Zrcnmve'],
+            BOTTOM_TITLE: 'Final Narrative of Evil',
+            GHOST: false,
+            TITLE_SCALE: 12,
+            MENU_SCALE: 4,
+            SMALL_SCALE: 2.5,
+            INK: '#f2f4ef',
+            NOISE_ALPHA: 0.34
+        };
+        var MENU_ITEMS = ['Project Archive', 'Settings', 'Return to Reality', '列表'];
+
+        var menuEl = document.getElementById("mainmenu");
+        var menuFrame = document.getElementById("menu-frame");
+        var menuCanvas = document.getElementById("menu-canvas");
+        var menuHint = document.getElementById("menu-hint");
+        var menuActive = false;
+        var gameStarted = false;
+        var hintTimer = null;
+
+        // 菜单运行时状态
+        var menuSel = 0;
+        var settingsNo = false;
+        var archiveSubtitleUntil = 0;  // Project Archive 确认后副标题「no mogexin」的消失时间戳
+        var changelogTimer = null;     // 进入主菜单后 V1.16 更新横幅的自动隐藏计时器
+        var bannerMsg = "";
+        var bannerUntil = 0;
+        var menuFrameCount = 0;
+        var menuBand = -120;
+        var menuNextBand = 120;
+        var delTimer = null;
+        var menuLoopTimer = null;
+        var crtPulseTimer = null;
+        // V1.165 全局设置终端状态
+        var settingsOpen = false;
+        var listOpen = false;
+        var lpSel = 0;
+        var menuSafeMode = false;
+        var spSel = 3;   // 默认高亮「关于」（列表最后一项）
+        var spSettings = {
+            fullscreen: false,
+            changelog: true,
+            safe: false,
+            noise: true,
+            theme: 'dark'
+        };
+        // V1.166 设置持久化：用 fso 写 HTA 同目录 XsureSettings.dat（JSON），重启不丢
+        var SP_FILE = "XsureSettings.dat";
+        function spFso() {
+            try { return new ActiveXObject("Scripting.FileSystemObject"); } catch (e) { return null; }
+        }
+        function spSettingsPath() {
+            try {
+                var fso = spFso();
+                if (fso) {
+                    var p = location.pathname;
+                    var folder = fso.GetParentFolderName(p);
+                    return (folder && folder !== ".") ? (folder + "\\" + SP_FILE) : SP_FILE;
+                }
+            } catch (e) {}
+            return SP_FILE;
+        }
+        function spLoadSettings() {
+            try {
+                var fso = spFso();
+                if (!fso) { return; }
+                var p = spSettingsPath();
+                if (fso.FileExists(p)) {
+                    var ts = fso.OpenTextFile(p, 1, false);
+                    var txt = ts.ReadAll(); ts.Close();
+                    var obj = JSON.parse(txt || "{}");
+                    if (obj && typeof obj === "object") {
+                        for (var k in obj) { if (obj.hasOwnProperty(k)) { spSettings[k] = obj[k]; } }
+                    }
+                }
+            } catch (e) {}
+        }
+        function spSaveSettings() {
+            try {
+                var fso = spFso();
+                if (!fso) { return; }
+                var p = spSettingsPath();
+                var ts = fso.CreateTextFile(p, true);
+                ts.Write(JSON.stringify(spSettings)); ts.Close();
+            } catch (e) {}
+        }
+        function spApplyLoadedSettings() {
+            spApplyTheme(spSettings.theme);
+            menuSafeMode = !!spSettings.safe;
+        }
+        spLoadSettings();
+        spApplyLoadedSettings();
+        var crtStartMs = 0;
+        var lastFrameOpacity = 1;
+        var lastRollOffset = 0;
+
+        // 特性探测：万一宿主不支持 Canvas 2D，也不能让整段脚本抛错黑屏
+        var menuCtx = (typeof menuCanvas.getContext === "function")
+            ? menuCanvas.getContext('2d') : null;
+        var menuNoise = document.createElement('canvas');
+        menuNoise.width = 320;
+        menuNoise.height = 180;
+        var menuNoiseCtx = (typeof menuNoise.getContext === "function")
+            ? menuNoise.getContext('2d') : null;
+        var menuCrtOverlay = null;
+
+        // ---------- 5x7 点阵字模：不依赖任何外部字体或网络 ----------
+        var MENU_FONT = {
+            'A':['01110','10001','10001','11111','10001','10001','10001'],
+            'B':['11110','10001','10001','11110','10001','10001','11110'],
+            'C':['01111','10000','10000','10000','10000','10000','01111'],
+            'D':['11110','10001','10001','10001','10001','10001','11110'],
+            'E':['11111','10000','10000','11110','10000','10000','11111'],
+            'F':['11111','10000','10000','11110','10000','10000','10000'],
+            'G':['01111','10000','10000','10111','10001','10001','01111'],
+            'H':['10001','10001','10001','11111','10001','10001','10001'],
+            'I':['11111','00100','00100','00100','00100','00100','11111'],
+            'J':['00111','00010','00010','00010','00010','10010','01100'],
+            'K':['10001','10010','10100','11000','10100','10010','10001'],
+            'L':['10000','10000','10000','10000','10000','10000','11111'],
+            'M':['10001','11011','10101','10101','10001','10001','10001'],
+            'N':['10001','11001','10101','10011','10001','10001','10001'],
+            'O':['01110','10001','10001','10001','10001','10001','01110'],
+            'P':['11110','10001','10001','11110','10000','10000','10000'],
+            'Q':['01110','10001','10001','10001','10101','10010','01101'],
+            'R':['11110','10001','10001','11110','10100','10010','10001'],
+            'S':['01111','10000','10000','01110','00001','00001','11110'],
+            'T':['11111','00100','00100','00100','00100','00100','00100'],
+            'U':['10001','10001','10001','10001','10001','10001','01110'],
+            'V':['10001','10001','10001','10001','10001','01010','00100'],
+            'W':['10001','10001','10001','10101','10101','11011','10001'],
+            'X':['10001','10001','01010','00100','01010','10001','10001'],
+            'Y':['10001','10001','01010','00100','00100','00100','00100'],
+            'Z':['11111','00001','00010','00100','01000','10000','11111'],
+            'a':['00000','00000','01110','00001','01111','10001','01111'],
+            'b':['10000','10000','10110','11001','10001','10001','11110'],
+            'c':['00000','00000','01111','10000','10000','10000','01111'],
+            'd':['00001','00001','01111','10001','10001','10001','01111'],
+            'e':['00000','00000','01110','10001','11111','10000','01111'],
+            'f':['00110','01001','01000','11100','01000','01000','01000'],
+            'g':['00000','01111','10001','10001','01111','00001','01110'],
+            'h':['10000','10000','10110','11001','10001','10001','10001'],
+            'i':['00100','00000','00100','00100','00100','00100','00100'],
+            'j':['00010','00000','00010','00010','00010','10010','01100'],
+            'k':['10000','10000','10010','10100','11000','10100','10010'],
+            'l':['11000','01000','01000','01000','01000','01000','11100'],
+            'm':['00000','00000','11010','10101','10101','10101','10101'],
+            'n':['00000','00000','10110','11001','10001','10001','10001'],
+            'o':['00000','00000','01110','10001','10001','10001','01110'],
+            'p':['00000','11110','10001','10001','11110','10000','10000'],
+            'q':['00000','01111','10001','10001','01111','00001','00001'],
+            'r':['00000','00000','10110','11001','10000','10000','10000'],
+            's':['00000','00000','01111','10000','01110','00001','11110'],
+            't':['01000','01000','11100','01000','01000','01001','00110'],
+            'u':['00000','00000','10001','10001','10001','10011','01101'],
+            'v':['00000','00000','10001','10001','10001','01010','00100'],
+            'w':['00000','00000','10001','10001','10101','10101','01010'],
+            'x':['00000','00000','10001','01010','00100','01010','10001'],
+            'y':['00000','10001','10001','01111','00001','00001','01110'],
+            'z':['00000','00000','11111','00010','00100','01000','11111'],
+            '0':['01110','10001','10011','10101','11001','10001','01110'],
+            '1':['00100','01100','00100','00100','00100','00100','01110'],
+            '2':['01110','10001','00001','00010','00100','01000','11111'],
+            '3':['11110','00001','00001','01110','00001','00001','11110'],
+            '4':['00010','00110','01010','10010','11111','00010','00010'],
+            '5':['11111','10000','10000','11110','00001','00001','11110'],
+            '6':['00110','01000','10000','11110','10001','10001','01110'],
+            '7':['11111','00001','00010','00100','01000','01000','01000'],
+            '8':['01110','10001','10001','01110','10001','10001','01110'],
+            '9':['01110','10001','10001','01111','00001','00010','01100'],
+            ' ':['00000','00000','00000','00000','00000','00000','00000'],
+            '.':['00000','00000','00000','00000','00000','01100','01100'],
+            ':':['00000','01100','01100','00000','01100','01100','00000'],
+            '>':['10000','01000','00100','00010','00100','01000','10000'],
+            '/':['00001','00001','00010','00100','01000','10000','10000'],
+            '-':['00000','00000','00000','11111','00000','00000','00000'],
+            '!':['00100','00100','00100','00100','00100','00000','00100'],
+            '?':['01110','10001','00001','00010','00100','00000','00100'],
+            ',':['00000','00000','00000','00000','01100','01100','01000'],
+            "'":['00100','00100','00000','00000','00000','00000','00000'],
+            '_':['00000','00000','00000','00000','00000','00000','11111'],
+            '(':['00010','00100','01000','01000','01000','00100','00010'],
+            ')':['01000','00100','00010','00010','00010','00100','01000']
+        };
+
+        // ---------- 绘制基元 ----------
+        function menuGlyph(ch) {
+            return MENU_FONT[ch] || MENU_FONT[ch.toUpperCase()] || MENU_FONT['?'];
+        }
+        function menuTextWidth(str, s, gap) {
+            if (gap === undefined) { gap = 1; }
+            return str.length * (5 + gap) * s - gap * s;
+        }
+        function drawMenuText(str, x, y, s, color, gap) {
+            if (color === undefined || color === null) { color = MENU_CONFIG.INK; }
+            if (gap === undefined) { gap = 1; }
+            menuCtx.fillStyle = color;
+            for (var i = 0; i < str.length; i++) {
+                var g = menuGlyph(str.charAt(i));
+                var ox = x + i * (5 + gap) * s;
+                for (var r = 0; r < 7; r++) {
+                    for (var c = 0; c < 5; c++) {
+                        if (g[r].charAt(c) === '1') {
+                            menuCtx.fillRect(ox + c * s, y + r * s, s, s);
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---------- 第 2 层：低分辨率雪花噪声（IE9 支持 createImageData / putImageData） ----------
+        function refreshMenuNoise() {
+            if (!menuNoiseCtx) { return; }
+            var img = menuNoiseCtx.createImageData(320, 180);
+            var d = img.data;
+            for (var i = 0; i < d.length; i += 4) {
+                var v = Math.random() * 255 | 0;
+                d[i] = v;
+                d[i + 1] = v;
+                d[i + 2] = v;
+                d[i + 3] = Math.random() < 0.5 ? 20 : 7;
+            }
+            menuNoiseCtx.putImageData(img, 0, 0);
+        }
+
+        // ---------- CRT 扫描线 / 暗角 / 偏色：预绘到离屏 canvas，每帧只叠一次 ----------
+        function buildMenuCrtOverlay() {
+            var oc = document.createElement('canvas');
+            oc.width = MENU_CANVAS_W;
+            oc.height = MENU_CANVAS_H;
+            var octx = (typeof oc.getContext === "function") ? oc.getContext('2d') : null;
+            if (!octx) { return null; }
+            // 扫描线：每 4 像素一条 1 像素半透明黑线，压在内容之上
+            octx.fillStyle = 'rgba(0,0,0,0.55)';
+            for (var sy = 3; sy < MENU_CANVAS_H; sy += 4) {
+                octx.fillRect(0, sy, MENU_CANVAS_W, 1);
+            }
+            // 暗角：用径向渐变覆盖层代替 CSS 径向渐变
+            var vg = octx.createRadialGradient(
+                MENU_CANVAS_W / 2, MENU_CANVAS_H * 0.48, MENU_CANVAS_W * 0.22,
+                MENU_CANVAS_W / 2, MENU_CANVAS_H * 0.48, MENU_CANVAS_W * 0.62);
+            vg.addColorStop(0, 'rgba(0,0,0,0)');
+            vg.addColorStop(0.38, 'rgba(0,0,0,0)');
+            vg.addColorStop(1, 'rgba(0,0,0,0.92)');
+            octx.fillStyle = vg;
+            octx.fillRect(0, 0, MENU_CANVAS_W, MENU_CANVAS_H);
+            // 极轻的绿灰偏色：用线性渐变代替 CSS 线性渐变
+            var lg = octx.createLinearGradient(0, 0, MENU_CANVAS_W, 0);
+            lg.addColorStop(0, 'rgba(120,140,120,0.035)');
+            lg.addColorStop(0.45, 'rgba(0,0,0,0)');
+            lg.addColorStop(1, 'rgba(0,0,0,0)');
+            octx.fillStyle = lg;
+            octx.fillRect(0, 0, MENU_CANVAS_W, MENU_CANVAS_H);
+            return oc;
+        }
+
+        // ---------- flicker / roll：JS 定时器代替 CSS 关键帧动画 ----------
+        function setFrameOpacity(value) {
+            if (value === lastFrameOpacity) { return; }
+            lastFrameOpacity = value;
+            try {
+                menuFrame.style.opacity = String(value);
+                menuFrame.style.filter = "alpha(opacity=" + Math.round(value * 100) + ")";
+            } catch (errOpacity) {
+                // 样式写入失败不影响绘制
+            }
+        }
+        function crtPulse() {
+            if (menuSafeMode) { setFrameOpacity(1); menuCanvas.style.top = "0px"; lastRollOffset = 0; return; }
+            var elapsed = Date.now() - crtStartMs;
+            var f = elapsed % 7000;
+            var op = 1;
+            if (f >= 6650 && f < 6720) { op = 0.88; }
+            else if (f >= 6790 && f < 6860) { op = 0.93; }
+            setFrameOpacity(op);
+            var r = elapsed % 9000;
+            var dy = 0;
+            if (r >= 8010 && r < 8100) { dy = 2; }
+            else if (r >= 8100 && r < 8190) { dy = -1; }
+            if (dy !== lastRollOffset) {
+                lastRollOffset = dy;
+                menuCanvas.style.top = dy + "px";
+            }
+        }
+
+        // ---------- 菜单行为 ----------
+        function flashMenu(msg, ms) {
+            if (ms === undefined) { ms = 1400; }
+            bannerMsg = msg;
+            bannerUntil = Date.now() + ms;
+        }
+        // X 取消时统一清掉的临时状态（Settings 的 no / 横幅 / Delete 长按计时）
+        function resetMenuTransient() {
+            settingsNo = false;
+            bannerMsg = "";
+            bannerUntil = 0;
+            archiveSubtitleUntil = 0;
+            if (changelogTimer !== null) { clearTimeout(changelogTimer); changelogTimer = null; }
+            if (delTimer !== null) { clearTimeout(delTimer); delTimer = null; }
+        }
+        function moveMenuSelection(delta) {
+            menuSel = (menuSel + delta + MENU_ITEMS.length) % MENU_ITEMS.length;
+            settingsNo = false;
+        }
+        function returnToReality() {
+            // HTA 环境没有手机原生退出通道，保留探测后直接走 window.close()
+            try {
+                if (window.Android && typeof window.Android.exitApp === "function") {
+                    window.Android.exitApp();
+                    return;
+                }
+                if (window.Android && typeof window.Android.close === "function") {
+                    window.Android.close();
+                    return;
+                }
+                if (navigator.app && typeof navigator.app.exitApp === "function") {
+                    navigator.app.exitApp();
+                    return;
+                }
+            } catch (errNative) {
+                // 原生通道不存在，继续走 HTA 关闭
+            }
+            try {
+                window.close();
+            } catch (errClose) {
+                flashMenu('EXIT BLOCKED. RUN phone.apk / PC.exe TO LEAVE.', 2200);
+            }
+        }
+        function confirmSel() {
+            if (menuSel === LIST_ROW) { lpOpen(); return; }
+            if (menuSel === SETTINGS_ROW) { spOpenSettings(); return; }
+            settingsNo = false;
+            if (menuSel === RETURN_ROW) { returnToReality(); return; }
+            // 默认（Project Archive）：删除了跳转其它页面的逻辑，
+            // 改为显示副标题「no mogexin」，约 3 秒后自动消失（不再 startGame）
+            archiveSubtitleUntil = Date.now() + 3000;
+        }
+
+        // ===== V1.165 全局设置终端（XM-Pointer 风格）=====
+        function spOpenSettings() {
+            settingsOpen = true;
+            spSettings.fullscreen = (typeof fullscreenActive === "boolean") ? fullscreenActive : false;
+            var el = document.getElementById("settings-panel");
+            if (el) { el.style.display = "block"; }
+            spSyncControls();
+            stopMenuCrt();   // 暂停主菜单 CRT 动画，省资源
+        }
+        function spCloseSettings() {
+            if (!settingsOpen) { return; }
+            settingsOpen = false;
+            var el = document.getElementById("settings-panel");
+            if (el) { el.style.display = "none"; }
+            startMenuCrt();  // 恢复主菜单 CRT
+        }
+        function spSwitchPane(btn) {
+            var pane = btn.getAttribute("data-pane");
+            var items = document.querySelectorAll(".sp-nav-item");
+            var found = -1;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i] === btn) { found = i; }
+                items[i].className = "sp-nav-item" + (items[i] === btn ? " active" : "");
+            }
+            spSel = found;
+            var panes = document.querySelectorAll(".sp-pane");
+            for (var k = 0; k < panes.length; k++) {
+                panes[k].className = "sp-pane" + (panes[k].getAttribute("data-pane") === pane ? " active" : "");
+            }
+        }
+        function spMoveSel(d) {
+            var items = document.querySelectorAll(".sp-nav-item");
+            if (!items.length) { return; }
+            var cur = spSel; if (cur < 0) { cur = items.length - 1; }
+            cur = (cur + d + items.length) % items.length;
+            spSel = cur;
+            for (var i = 0; i < items.length; i++) {
+                items[i].className = "sp-nav-item" + (i === cur ? " active" : "");
+            }
+        }
+        function spActivateSel() {
+            var items = document.querySelectorAll(".sp-nav-item");
+            if (spSel >= 0 && spSel < items.length) { spSwitchPane(items[spSel]); }
+        }
+        function spToggleSwitch(btn) {
+            var key = btn.getAttribute("data-toggle");
+            var on = btn.className.indexOf("on") === -1;
+            btn.className = "sp-switch-btn" + (on ? " on" : "");
+            btn.innerHTML = on ? "[ ON ]" : "[ OFF ]";
+            spSettings[key] = on;
+            if (key === "fullscreen") {
+                try { toggleFullscreen(); } catch (e) {}
+                on = (typeof fullscreenActive === "boolean") ? fullscreenActive : on;
+                spSettings.fullscreen = on;
+                btn.className = "sp-switch-btn" + (on ? " on" : "");
+                btn.innerHTML = on ? "[ ON ]" : "[ OFF ]";
+            }
+            spApplySetting(key, spSettings[key]);
+            spSaveSettings();
+        }
+        function spSelectOpt(btn) {
+            var opt = btn.getAttribute("data-opt");
+            var val = btn.getAttribute("data-value");
+            var group = document.querySelectorAll('.sp-opt-btn[data-opt="' + opt + '"]');
+            for (var i = 0; i < group.length; i++) {
+                group[i].className = "sp-opt-btn" + (group[i] === btn ? " on" : "");
+            }
+            spSettings[opt] = val;
+            if (opt === "theme") { spApplyTheme(val); }
+            spSaveSettings();
+        }
+        function spApplySetting(key, on) {
+            if (key === "safe") { menuSafeMode = on; }
+            // fullscreen / noise / changelog 的生效逻辑见 spToggleSwitch / renderMenu / showMainMenu
+        }
+        function spApplyTheme(val) {
+            if (val === "light") { document.body.className = "sp-light"; }
+            else { document.body.className = ""; }
+        }
+        function spToggleTheme() {
+            var cur = spSettings.theme === "light" ? "dark" : "light";
+            spSettings.theme = cur;
+            spApplyTheme(cur);
+            var opts = document.querySelectorAll('.sp-opt-btn[data-opt="theme"]');
+            for (var i = 0; i < opts.length; i++) {
+                opts[i].className = "sp-opt-btn" + (opts[i].getAttribute("data-value") === cur ? " on" : "");
+            }
+            spSaveSettings();
+        }
+        function spSyncControls() {
+            var btns = document.querySelectorAll(".sp-switch-btn[data-toggle]");
+            for (var i = 0; i < btns.length; i++) {
+                var k = btns[i].getAttribute("data-toggle");
+                var on = !!spSettings[k];
+                btns[i].className = "sp-switch-btn" + (on ? " on" : "");
+                btns[i].innerHTML = on ? "[ ON ]" : "[ OFF ]";
+            }
+            var opts = document.querySelectorAll('.sp-opt-btn[data-opt="theme"]');
+            for (var j = 0; j < opts.length; j++) {
+                opts[j].className = "sp-opt-btn" + (opts[j].getAttribute("data-value") === spSettings.theme ? " on" : "");
+            }
+            spApplyTheme(spSettings.theme);
+        }
+
+        // ===== V1.165 列表导航页（控制终端风格 · 参考 xiemi.eu.cc/min 与游戏读档列表）=====
+        function lpOpen() {
+            listOpen = true;
+            var el = document.getElementById('list-page'); if (el) { el.style.display = 'block'; }
+            lpSync();
+            try { var t = document.getElementById('lp-time'); if (t) { t.textContent = new Date().toLocaleString(); } } catch (e) {}
+            stopMenuCrt();
+        }
+        function lpClose() {
+            if (!listOpen) { return; }
+            listOpen = false;
+            var el = document.getElementById('list-page'); if (el) { el.style.display = 'none'; }
+            startMenuCrt();
+        }
+        function lpSync() {
+            var rows = document.querySelectorAll('#lp-list .lp-row');
+            for (var i = 0; i < rows.length; i++) { rows[i].className = 'lp-row' + (i === lpSel ? ' active' : ''); }
+        }
+        function lpMove(d) {
+            var rows = document.querySelectorAll('#lp-list .lp-row');
+            if (!rows.length) { return; }
+            lpSel = (lpSel + d + rows.length) % rows.length;
+            lpSync();
+        }
+        function lpActivate() {
+            var rows = document.querySelectorAll('#lp-list .lp-row');
+            var act = (rows[lpSel] && rows[lpSel].getAttribute) ? rows[lpSel].getAttribute('data-act') : '';
+            if (act === 'archive') { lpClose(); if (typeof XZArchive !== 'undefined') { XZArchive.openList(); } return; }
+            if (act === 'settings') { lpClose(); spOpenSettings(); return; }
+            if (act === 'fullscreen') { toggleFullscreen(); return; }
+            if (act === 'reality') { lpClose(); returnToReality(); return; }
+        }
+
+        function beginClearSaveHold(phase, code, e) {
+            blockKeyDefault(e);
+            if (delTimer !== null) { return true; }
+            delTimer = setTimeout(function() {
+                delTimer = null;
+                flashMenu('ALL DATA RESET.', 900);
+            }, 1200);
+            return true;
+        }
+
+        // ---------- 逐帧绘制：IE9 无原生逐帧调度，统一 setTimeout(fn, 16) ----------
+        function scheduleMenuFrame() {
+            if (!menuActive || !menuCtx) { menuLoopTimer = null; return; }
+            menuLoopTimer = setTimeout(renderMenu, 16);
+        }
+        function renderMenu() {
+            if (!menuActive || !menuCtx) { menuLoopTimer = null; return; }
+            var now = Date.now();
+            menuFrameCount++;
+            menuCtx.fillStyle = '#000';
+            menuCtx.fillRect(0, 0, MENU_CANVAS_W, MENU_CANVAS_H);
+
+            // 可选：右侧模糊人形。关掉后这里是纯黑负空间
+            if (MENU_CONFIG.GHOST) {
+                var gg = menuCtx.createRadialGradient(960, 340, 20, 960, 340, 300);
+                gg.addColorStop(0, 'rgba(190,200,180,0.16)');
+                gg.addColorStop(0.55, 'rgba(120,135,115,0.06)');
+                gg.addColorStop(1, 'rgba(0,0,0,0)');
+                menuCtx.fillStyle = gg;
+                menuCtx.fillRect(660, 40, 600, 640);
+            }
+
+            // 主标题：Xsure / Zrcnmve
+            var ts = MENU_CONFIG.TITLE_SCALE;
+            for (var ti = 0; ti < MENU_CONFIG.TITLE_LINES.length; ti++) {
+                drawMenuText(MENU_CONFIG.TITLE_LINES[ti], 36, 32 + ti * (ts * 8),
+                             ts, MENU_CONFIG.INK, 1);
+            }
+
+            // 三项菜单：选中项前缀闪烁 >> 光标
+            var ms = MENU_CONFIG.MENU_SCALE;
+            var cursorOn = (Math.floor(now / 480) % 2) === 0;
+            for (var mi = 0; mi < MENU_ITEMS.length; mi++) {
+                var prefix = (menuSel === mi && cursorOn) ? '>>' : '  ';
+                drawMenuText(prefix + MENU_ITEMS[mi], 36, MENU_Y + mi * ROW_H,
+                             ms, MENU_CONFIG.INK, 1);
+            }
+
+            // Settings 执行后的副标题 no
+            if (settingsNo) {
+                drawMenuText('   no', 36, MENU_Y + ROW_H + 32,
+                             MENU_CONFIG.SMALL_SCALE, 'rgba(242,244,239,0.72)', 1);
+            }
+            // Project Archive 确认后的副标题：仅显示几秒（no mogexin），时间到自动消失
+            if (now < archiveSubtitleUntil) {
+                drawMenuText('   no mogexin', 36, MENU_Y + 34,
+                             MENU_CONFIG.SMALL_SCALE, 'rgba(242,244,239,0.72)', 1);
+            }
+
+            // 底部：版本号 + 片名 / 临时横幅
+            drawMenuText('V 1.166', 24, 686, MENU_CONFIG.SMALL_SCALE,
+                         'rgba(242,244,239,0.8)', 1);
+            var bottomLine = (bannerMsg && now < bannerUntil) ? bannerMsg : MENU_CONFIG.BOTTOM_TITLE;
+            drawMenuText(bottomLine,
+                         (MENU_CANVAS_W - menuTextWidth(bottomLine, MENU_CONFIG.SMALL_SCALE, 1)) / 2,
+                         686, MENU_CONFIG.SMALL_SCALE, 'rgba(242,244,239,0.8)', 1);
+
+            // tracking 亮带（视觉安全模式关闭动态特效）
+            if (!menuSafeMode) {
+                menuBand += 1.1;
+                if (menuBand > MENU_CANVAS_H + 60) {
+                    menuBand = -120;
+                    menuNextBand = 180 + Math.random() * 300;
+                }
+                if (menuBand > -60) {
+                    menuCtx.fillStyle = 'rgba(255,255,255,0.035)';
+                    menuCtx.fillRect(0, menuBand, MENU_CANVAS_W, 34);
+                    menuCtx.fillStyle = 'rgba(255,255,255,0.06)';
+                    menuCtx.fillRect(0, menuBand + 34, MENU_CANVAS_W, 2);
+                }
+            }
+
+            // 雪花最后叠上去，连文字一起劣化（视觉安全 / 关闭噪点时不叠加）
+            if (menuNoiseCtx && spSettings.noise && !menuSafeMode) {
+                if (menuFrameCount % 3 === 0) { refreshMenuNoise(); }
+                menuCtx.globalAlpha = MENU_CONFIG.NOISE_ALPHA;
+                menuCtx.drawImage(menuNoise, 0, 0, MENU_CANVAS_W, MENU_CANVAS_H);
+                menuCtx.globalAlpha = 1;
+            }
+
+            // 偶发整行错位：模拟信号丢行（视觉安全模式关闭）
+            if (!menuSafeMode && Math.random() < 0.006) {
+                var gy = Math.random() * MENU_CANVAS_H | 0;
+                var gh = (6 + Math.random() * 18) | 0;
+                var gdx = ((Math.random() - 0.5) * 14) | 0;
+                menuCtx.drawImage(menuCanvas, 0, gy, MENU_CANVAS_W, gh,
+                                  gdx, gy, MENU_CANVAS_W, gh);
+            }
+
+            // 扫描线 + 暗角压在最上层
+            if (menuCrtOverlay) { menuCtx.drawImage(menuCrtOverlay, 0, 0); }
+            scheduleMenuFrame();
+        }
+
+        function startMenuCrt() {
+            if (!menuCtx) { return; }
+            if (menuCrtOverlay === null) { menuCrtOverlay = buildMenuCrtOverlay(); }
+            refreshMenuNoise();
+            if (menuLoopTimer === null) { renderMenu(); }
+            if (crtPulseTimer === null) {
+                crtStartMs = Date.now();
+                crtPulseTimer = setInterval(crtPulse, 90);
+            }
+        }
+        function stopMenuCrt() {
+            if (menuLoopTimer !== null) { clearTimeout(menuLoopTimer); menuLoopTimer = null; }
+            if (crtPulseTimer !== null) { clearInterval(crtPulseTimer); crtPulseTimer = null; }
+            setFrameOpacity(1);
+            menuCanvas.style.top = "0px";
+            lastRollOffset = 0;
+        }
+
+        // IE9 不支持 min() / calc()，用 JS 按客户区尺寸算 16:9 等比显示尺寸
+        function fitMenuFrame() {
+            var ww = document.documentElement.clientWidth;
+            var wh = document.documentElement.clientHeight;
+            if (!ww || !wh) { ww = 1024; wh = 768; }
+            var scale = Math.min(ww / MENU_CANVAS_W, wh / MENU_CANVAS_H);
+            var w = Math.floor(MENU_CANVAS_W * scale);
+            var h = Math.floor(MENU_CANVAS_H * scale);
+            menuFrame.style.width = w + "px";
+            menuFrame.style.height = h + "px";
+            menuFrame.style.left = Math.floor((ww - w) / 2) + "px";
+            menuFrame.style.top = Math.floor((wh - h) / 2) + "px";
+        }
+        // 显式设置 canvas 显示尺寸；F4 全屏 / onresize 后必须重算
+        function layoutMenuCanvas() {
+            var w = parseInt(menuFrame.style.width, 10);
+            var h = parseInt(menuFrame.style.height, 10);
+            if (!w || !h) { return; }
+            menuCanvas.style.width = w + "px";
+            menuCanvas.style.height = h + "px";
+            menuHint.style.left = Math.floor(w * 0.025) + "px";
+            menuHint.style.top = Math.floor(h * 0.870) + "px";
+        }
+
+        function showMainMenu() {
+            menuActive = true;
+            menuEl.style.display = "block";
+            fitMenuFrame();
+            layoutMenuCanvas();
+            startMenuCrt();
+            if (spSettings.changelog) { showChangelog(); }   // 进入主菜单后弹 6.5 秒 V1.165 更新横幅（受设置开关控制）
+        }
+
+        // V1.165 更新内容横幅：优先读取同目录 xz.txt，读取失败回退内置文案；6.5 秒后自动隐藏
+        function showChangelog() {
+            var el = document.getElementById("changelog");
+            if (!el) { return; }
+            var html = ''
+                + '<div class="cl-title">V 1.166 更新内容</div>'
+                + '<div>· F5：无任何功能（重启闪屏的光晕对光敏性患者有害，已移除）</div>'
+                + '<div>· Esc：仅预留作后续菜单功能，当前不退出、不跳过、不触发</div>'
+                + '<div>· 主界面 Settings 开放全局设置终端（XM-Pointer 风格）</div>'
+                + '<div>· F4：可以进入全屏显示（像 Minecraft 那样）</div>'
+                + '<div>· F1~12：不再支持重启与跳过启动页面</div>'
+                + '<div>· 视觉安全：减少动态效果，面向光敏性用户</div>';
+            // 尝试从同目录 xz.txt 拉取更新内容（IE9 本地文件读取受限时回退内置文案）
+            try {
+                var xh = new ActiveXObject('Microsoft.XMLHTTP');
+                xh.open('GET', 'xz.txt', false);
+                xh.send();
+                if (xh.status === 200 && xh.responseText) {
+                    var lines = xh.responseText.split(/\r?\n/);
+                    var valid = [];
+                    for (var li = 0; li < lines.length; li++) {
+                        if (lines[li].replace(/\s/g, '').length) { valid.push(lines[li]); }
+                    }
+                    if (valid.length >= 2) {
+                        html = '';
+                        for (var vi = 0; vi < valid.length; vi++) {
+                            var s = valid[vi].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            html += '<div>' + s + '</div>';
+                        }
+                    }
+                }
+            } catch (errChangelog) { /* 读取失败：保留内置文案 */ }
+            el.innerHTML = html;
+            el.style.display = "block";
+            if (changelogTimer !== null) { clearTimeout(changelogTimer); }
+            changelogTimer = setTimeout(function() {
+                el.style.display = "none";
+                changelogTimer = null;
+            }, 6500);
+        }
+
+        function startGame() {
+            if (gameStarted) { return; }
+            gameStarted = true;
+            menuActive = false;
+            stopMenuCrt();
+            if (hintTimer !== null) { clearTimeout(hintTimer); hintTimer = null; }
+            menuHint.style.display = "none";
+            menuEl.style.display = "none";
+            playNode(0);                // New Game：进入观测终端，从第一句开始
+        }
+
+        // 已被 ui.html 三项菜单取代：保留函数但不再挂接任何热区或按键
+        function continueGame() {
+            // 当前 data/saves 只有 README.txt，无存档格式规范；不臆造读档逻辑
+            if (gameStarted) { return; }
+            menuHint.style.display = "block";
+            if (hintTimer !== null) { clearTimeout(hintTimer); }
+            hintTimer = setTimeout(function() { menuHint.style.display = "none"; }, 2000);
+        }
+
+        // 点击换算与 MENU_Y / ROW_H 保持一致：把 clientY 映射回 720 的内部分辨率
+        menuFrame.onclick = function(ev) {
+            ev = ev || window.event;
+            var px = ev.clientX, py = ev.clientY;
+            if (typeof px !== "number" || typeof py !== "number") { return; }
+            var r = menuFrame.getBoundingClientRect();
+            var rh = r.bottom - r.top;
+            if (!rh) { return; }
+            if (px < r.left || px > r.right) { return; }
+            var canvasY = (py - r.top) / rh * MENU_CANVAS_H;
+            var row = Math.floor((canvasY - MENU_Y) / ROW_H);
+            if (row >= 0 && row < MENU_ITEMS.length) {
+                if (menuSel === row) { confirmSel(); }
+                else { menuSel = row; settingsNo = false; }
+            }
+        };
+
+        // Delete 长按：keyup 取消计时，避免误触清档提示
+        // 同时拔出连发闩锁：keyup 是「这不是连发」的唯一可靠信号
+        document.onkeyup = function(e) {
+            e = e || window.event;
+            var upCode = (typeof e.keyCode === "number") ? e.keyCode : 0;
+            releaseKeyHeld(upCode);
+            if (upCode === 46 && delTimer !== null) {
+                clearTimeout(delTimer);
+                delTimer = null;
+            }
+        };
+
+        // M4：切走窗口时收不到 keyup，全部闩锁清零，避免回窗后键盘被闩死
+        window.onblur = function() {
+            clearKeyHeld();
+        };
+
+        window.onresize = function() {
+            if (!splashDone) { fitSplashImage(); }
+            if (menuActive) { fitMenuFrame(); layoutMenuCanvas(); }
+        };
+        // 启动展示页不可跳过：点击闪屏不再触发 endSplash（展示页需完整播放）
+        splashImg.onerror = function() {
+            // 单张图加载失败：隐藏破图，序列仍按时间推进，绝不卡死用户
+            splashImg.style.display = "none";
+        };
+        // 整段序列无条件兜底，不依赖任何图片是否加载成功
+        guardTimer = setTimeout(finishSplash, SEQUENCE_GUARD_MS);
+        showStep(0);
+
+        // ======================================================================
+        // 全局键盘输入契约（window.XZInput）—— 后续主界面代码唯一需要对接的层
+        // ----------------------------------------------------------------------
+        // 【为什么单独做一层】
+        //   用户后续会提供一份主界面代码。若把按键判断硬塞进 onkeydown，每加一个
+        //   界面都要重写一遍分支。这里把三层解耦：
+        //     1. KEY_* / KEY_MAP / KEY_ACTION : 物理按键常量与「按键 -> 动作」映射表
+        //     2. dispatchKey(code, e)        : 分派器，按 getPhase() 得到的阶段派发
+        //     3. window.XZInput              : 语义动作注册表 + 默认行为回调
+        //   ESC（保命退出）在 onkeydown 中绝对优先短路，不经过本层分派。
+        //
+        // ======================================================================
+        // 【后续主界面接入点 · 请从这里挂接，无需改写 document.onkeydown】
+        // ----------------------------------------------------------------------
+        //   (A) 覆盖阶段判定（新增界面时首选）：
+        //       window.XZInput.getPhase = function() { return "main-ui"; };
+        //       window.XZInput.register("confirm", "main-ui", function(phase, code) {
+        //           mainUi.confirmSelection();
+        //           return true;
+        //       });
+        //   (B) 直接覆盖默认回调（全局替换某个动作，不区分阶段）：
+        //       window.XZInput.onConfirm = function(phase, code) {
+        //           mainUi.confirmSelection();
+        //           return true;
+        //       };
+        //       onCancel / onToggleFullscreen / onLegacyConfirm 同样可整体覆盖。
+        //   (C) 按阶段精细覆盖（推荐）：register 注册的 handler 优先于默认回调，
+        //       可用 unregister(action, phase) 撤销，不影响其它阶段：
+        //       window.XZInput.register("confirm", "menu", myMenuConfirm);
+        //       window.XZInput.unregister("confirm", "menu");
+        //   (D) 新增按键：window.XZInput.bind(65, "confirm");  // 把 A 键也绑为确定
+        //       或在 KEY_MAP / KEY_ACTION 中增加常量与映射，再在默认回调中处理新阶段。
+        //
+        //   phase 现有取值： "splash"（启动序列） / "menu"（像素主菜单） /
+        //                   "terminal"（观测终端） / "idle"（未定义状态）。
+        //   语义动作： "confirm"（Z 确定） / "cancel"（X 取消） /
+        //             "fullscreen"（F4 全屏，全局） / "legacyConfirm"（Enter / 空格）。
+        //   所有回调签名统一为 function(phase, code, e)，返回 true 表示按键已消费。
+        //   F4 全屏切换与 ESC 保命退出属于全局能力，任何 phase 都生效。
+        //   F4 同时接受 keyCode 115（真实 F4 键）与 121（契约指定值）；
+        //   两者都走 "fullscreen" 动作并阻止 IE 地址栏历史默认行为。
+        // ======================================================================
+
+        // ----- 第 1 层：物理按键常量（IE9 / Trident 只可靠支持 e.keyCode） -----
+        var KEY_ESC           = 27;   // ESC：保命退出，绝对优先
+        var KEY_CONFIRM       = 90;   // Z：确定 / 确认（等同 Enter）
+        var KEY_CANCEL        = 88;   // X：取消 / 返回
+        var KEY_FULLSCREEN    = 121;  // 契约指定的全屏键码（Win32 虚拟键为 F10）
+        var KEY_FULLSCREEN_F4 = 115;  // 物理 F4 键在 IE9/Trident 下的真实 keyCode
+        var KEY_ENTER         = 13;   // Enter：主菜单确定兜底（保留原有行为）
+        var KEY_SPACE         = 32;   // 空格：主菜单确定兜底（保留原有行为）
+
+        // 两个键码都映射到 fullscreen：既满足契约中的 121，也覆盖用户真实按下的 F4。
+        var KEY_MAP = {
+            ESC:           KEY_ESC,
+            CONFIRM:       KEY_CONFIRM,
+            CANCEL:        KEY_CANCEL,
+            FULLSCREEN:    KEY_FULLSCREEN,
+            FULLSCREEN_F4: KEY_FULLSCREEN_F4,
+            ENTER:         KEY_ENTER,
+            SPACE:         KEY_SPACE,
+        };
+
+        // 「keyCode -> 语义动作」映射表；后续可用 window.XZInput.bind 动态扩展。
+        // KEY_ESC 不登记于此：由 onkeydown 在分派之前绝对优先拦截。
+        var KEY_ACTION = {};
+        KEY_ACTION[KEY_CONFIRM]       = "confirm";
+        KEY_ACTION[KEY_CANCEL]        = "cancel";
+        KEY_ACTION[KEY_FULLSCREEN]    = "fullscreen";
+        KEY_ACTION[KEY_FULLSCREEN_F4] = "fullscreen";
+        KEY_ACTION[KEY_ENTER]         = "legacyConfirm";
+        KEY_ACTION[KEY_SPACE]         = "legacyConfirm";
+
+        // ----- 全屏切换：保存几何、try/catch 兜底、切换后显式重算布局 -----
+        var fullscreenActive = false;
+        var fullscreenSaved = null;    // { left, top, width, height, clientW, clientH }
+        var fullscreenChrome = null;   // { dw, dh } 外框与客户区差值（进入全屏后自校准）
+        var fullscreenOriginOffset = null;  // { ox, oy } 客户区原点相对外框原点的偏移
+
+        // 位置取 window.screenLeft / screenTop；外框尺寸优先 outerWidth/outerHeight，
+        // 取不到时用 document.documentElement.clientWidth/clientHeight 反推
+        function readWindowGeometry() {
+            var left = (typeof window.screenLeft === "number") ? window.screenLeft : 0;
+            var top = (typeof window.screenTop === "number") ? window.screenTop : 0;
+            var cw = document.documentElement.clientWidth || 1024;
+            var ch = document.documentElement.clientHeight || 768;
+            var ow = window.outerWidth;
+            var oh = window.outerHeight;
+            var width = (typeof ow === "number" && ow > 0) ? ow : (cw + 8);
+            var height = (typeof oh === "number" && oh > 0) ? oh : (ch + 30);
+            return {
+                left: left, top: top,
+                width: width, height: height,
+                clientW: cw, clientH: ch
+            };
+        }
+
+        // 全屏时测量「外框 - 客户区」差值，退出时据此精确还原（不依赖 outerWidth）
+        function readWindowChrome() {
+            var cw = document.documentElement.clientWidth;
+            var ch = document.documentElement.clientHeight;
+            var sw = screen.width;
+            var sh = screen.height;
+            if (!cw || !ch || !sw || !sh) { return null; }
+            return { dw: sw - cw, dh: sh - ch };
+        }
+
+        // 切换后显式调用现有布局函数，不依赖 window.onresize 是否真的触发
+        // F4 全屏后必须重算 canvas 显示尺寸与点击坐标换算所依赖的 frame 几何
+        function relayoutForViewport() {
+            try {
+                if (!splashDone) { fitSplashImage(); }
+                if (menuActive) { fitMenuFrame(); layoutMenuCanvas(); }
+            } catch (errLayout) {
+                // 布局重算失败不得影响按键流程，安全忽略
+            }
+        }
+
+        function toggleFullscreen() {
+            try {
+                if (!fullscreenActive) {
+                    fullscreenSaved = readWindowGeometry();
+                    fullscreenChrome = null;
+                    fullscreenOriginOffset = null;
+                    window.moveTo(0, 0);
+                    // screenLeft/screenTop 报的是客户区原点，moveTo 设的是外框原点。
+                    // 此刻外框原点为 (0,0)，读到的小数值即两者的固定偏移。
+                    try {
+                        var oxNow = window.screenLeft;
+                        var oyNow = window.screenTop;
+                        if (typeof oxNow === "number" && typeof oyNow === "number"
+                            && oxNow >= 0 && oxNow <= 64 && oyNow >= 0 && oyNow <= 128) {
+                            fullscreenOriginOffset = { ox: oxNow, oy: oyNow };
+                        }
+                    } catch (errOrigin0) {
+                        fullscreenOriginOffset = null;
+                    }
+                    window.resizeTo(screen.width, screen.height);
+                    fullscreenActive = true;
+                    // resizeTo 生效后客户区尺寸才稳定，稍后再次自校准（含位置偏移）
+                    setTimeout(function() {
+                        try {
+                            fullscreenChrome = readWindowChrome();
+                            var ox = window.screenLeft;
+                            var oy = window.screenTop;
+                            if (typeof ox === "number" && typeof oy === "number"
+                                && ox >= 0 && ox <= 64 && oy >= 0 && oy <= 128) {
+                                fullscreenOriginOffset = { ox: ox, oy: oy };
+                            }
+                        } catch (errChrome) {
+                            fullscreenChrome = null;
+                        }
+                    }, 80);
+                } else {
+                    var s = fullscreenSaved;
+                    if (s) {
+                        var rw = s.width;
+                        var rh = s.height;
+                        if (fullscreenChrome) {
+                            rw = s.clientW + fullscreenChrome.dw;
+                            rh = s.clientH + fullscreenChrome.dh;
+                        }
+                        var mx = s.left;
+                        var my = s.top;
+                        if (fullscreenOriginOffset) {
+                            mx = s.left - fullscreenOriginOffset.ox;
+                            my = s.top - fullscreenOriginOffset.oy;
+                        }
+                        window.moveTo(mx, my);
+                        window.resizeTo(rw, rh);
+                    }
+                    fullscreenActive = false;
+                    fullscreenSaved = null;
+                    fullscreenChrome = null;
+                    fullscreenOriginOffset = null;
+                }
+            } catch (errFullscreen) {
+                // HTA 中窗口 API 可能受限：安全 no-op，不抛异常、不卡死后续按键
+                fullscreenActive = false;
+                fullscreenSaved = null;
+                fullscreenChrome = null;
+                fullscreenOriginOffset = null;
+            }
+            relayoutForViewport();
+        }
+
+        // 主菜单取消：清掉 NO SAVE DATA 提示与 hintTimer，不进入游戏、停留菜单
+        function cancelMenuAction() {
+            if (hintTimer !== null) { clearTimeout(hintTimer); hintTimer = null; }
+            menuHint.style.display = "none";
+            resetMenuTransient();        // 清 Settings 的 no / 副标题 / 底部横幅 / Delete 长按计时
+            // 刻意不调用 startGame() / endSplash()，保持 menuActive 与 splashDone 原值
+        }
+
+        // IE 的 F4 会打开地址栏历史：双通道阻止默认行为
+        function blockKeyDefault(e) {
+            if (!e) { return; }
+            try {
+                if (typeof e.preventDefault === "function") { e.preventDefault(); }
+            } catch (errPrevent) {
+                // 部分 Trident 版本不暴露 preventDefault，忽略
+            }
+            try {
+                e.returnValue = false;
+            } catch (errReturn) {
+                // 只读事件对象，忽略
+            }
+        }
+
+        // ----- 第 3 层：全局输入对象（对外的唯一契约） -----
+        window.XZInput = {
+            version: "1.0",
+            keyMap: KEY_MAP,
+            actionByCode: KEY_ACTION,
+            handlers: {
+                confirm: {},
+                cancel: {},
+                fullscreen: {},
+                legacyConfirm: {}
+            },
+
+            // 阶段判定：默认按现有状态变量推断；主界面代码可直接覆盖本函数
+            getPhase: function() {
+                if (!splashDone) { return "splash"; }
+                if (menuActive && !gameStarted) { return "menu"; }
+                if (gameStarted) { return "terminal"; }
+                return "idle";
+            },
+
+            // 查询与扩展「按键 -> 动作」映射
+            actionFor: function(code) {
+                return this.actionByCode[code] || "";
+            },
+            bind: function(code, action) {
+                if (typeof code === "number" && typeof action === "string" && action !== "") {
+                    this.actionByCode[code] = action;
+                }
+            },
+            unbind: function(code) {
+                delete this.actionByCode[code];
+            },
+
+            // 按阶段注册 / 撤销行为；注册项优先于下方默认回调
+            register: function(action, phase, fn) {
+                if (typeof action !== "string" || action === "") { return; }
+                if (typeof phase !== "string" || phase === "") { return; }
+                if (typeof fn !== "function") { return; }
+                if (!this.handlers[action]) { this.handlers[action] = {}; }
+                this.handlers[action][phase] = fn;
+            },
+            unregister: function(action, phase) {
+                if (this.handlers[action]) { delete this.handlers[action][phase]; }
+            },
+
+            // 语义动作分派：先查该 phase 的注册项，再退回默认回调
+            emit: function(action, phase, code, e) {
+                var table = this.handlers[action];
+                if (table && typeof table[phase] === "function") {
+                    return table[phase](phase, code, e);
+                }
+                if (action === "confirm")       { return this.onConfirm(phase, code, e); }
+                if (action === "cancel")        { return this.onCancel(phase, code, e); }
+                if (action === "fullscreen")    { return this.onToggleFullscreen(phase, code, e); }
+                if (action === "legacyConfirm") { return this.onLegacyConfirm(phase, code, e); }
+                return false;
+            },
+
+            // ---- 默认行为（可被主界面代码整体覆盖） ----
+            onConfirm: function(phase, code, e) {
+                // 启动展示页不可跳过：splash 阶段的「确认」不再 endSplash，必须完整播放
+                if (phase === "menu") {
+                    startGame();                 // 确定 = New Game（等同 Enter）
+                    return true;
+                }
+                if (phase === "terminal") {
+                    // 直接复用现有 dialogueBox.onclick handler，不重写打字机状态机
+                    try {
+                        if (typeof dialogueBox.onclick === "function") {
+                            dialogueBox.onclick();
+                        }
+                    } catch (errDialogue) {
+                        // 主界面替换该 handler 后若抛错，不得中断按键分派
+                    }
+                    return true;
+                }
+                return true;
+            },
+
+            onCancel: function(phase, code, e) {
+                if (phase === "splash") {
+                    // 必须单独拦截：取消不跳过，留在当前屏，绝不落入「任意键跳过」
+                    return true;
+                }
+                if (phase === "menu") {
+                    cancelMenuAction();          // 隐藏 NO SAVE DATA、清 hintTimer、停留菜单
+                    return true;
+                }
+                if (phase === "terminal") {
+                    // 安全 no-op：不退出、不清空剧情、不打断打字机
+                    return true;
+                }
+                return true;
+            },
+
+            onToggleFullscreen: function(phase, code, e) {
+                toggleFullscreen();              // 任何阶段都生效
+                return true;
+            },
+
+            onLegacyConfirm: function(phase, code, e) {
+                // 仅在主菜单阶段由 Enter / 空格触发，等同 New Game
+                if (phase === "menu") { startGame(); }
+                return true;
+            }
+        };
+
+        // ===== CRT Canvas 菜单对 XZInput 的挂接：只按阶段 register / bind =====
+        // 新增按键一律走 bind + register；splash 阶段不再注册任何 endSplash（启动展示页不可跳过），
+        // 任意键忽略、F4 全屏照常、ESC 仅预留（不退出）；terminal 阶段无注册即安全忽略。
+        // dispatchKey 的分派结构与 document.onkeydown 的 ESC 短路完全不动。
+        window.XZInput.bind(38, "navPrev");
+        window.XZInput.bind(40, "navNext");
+        window.XZInput.bind(46, "clearSave");
+
+        window.XZInput.register("confirm", "menu", function(phase, code, e) {
+            confirmSel();
+            return true;
+        });
+        window.XZInput.register("legacyConfirm", "menu", function(phase, code, e) {
+            confirmSel();
+            return true;
+        });
+        window.XZInput.register("cancel", "menu", function(phase, code, e) {
+            cancelMenuAction();
+            return true;
+        });
+        window.XZInput.register("navPrev", "menu", function(phase, code, e) {
+            blockKeyDefault(e);
+            moveMenuSelection(-1);
+            return true;
+        });
+        window.XZInput.register("navNext", "menu", function(phase, code, e) {
+            blockKeyDefault(e);
+            moveMenuSelection(1);
+            return true;
+        });
+        window.XZInput.register("clearSave", "menu", beginClearSaveHold);
+
+        // 启动展示页不可跳过：闪屏阶段不注册任何会 endSplash 的按键（方向键/Delete 均忽略）
+
+        // ----- 第 2 层：分派器 -----
+        function dispatchKey(code, e) {
+            var phase = window.XZInput.getPhase();
+            var action = window.XZInput.actionFor(code);
+
+            // F4：全局全屏切换。必须阻止 IE 地址栏历史默认行为，且必须在此拦截，
+            // 绝不落入闪屏「其它任意键跳过」
+            if (action === "fullscreen") {
+                blockKeyDefault(e);
+                window.XZInput.emit(action, phase, code, e);
+                return;
+            }
+
+            // legacyConfirm（Enter / 空格）只在主菜单阶段生效；其它阶段视为未绑定，
+            // 从而保留闪屏「任意键跳过」与终端忽略的原有语义
+            if (action && (action !== "legacyConfirm" || phase === "menu")) {
+                window.XZInput.emit(action, phase, code, e);
+                return;
+            }
+
+            // 未绑定按键：启动展示页不可跳过，闪屏阶段一律忽略（F4 全屏已在上方分支处理，ESC 退出在前置拦截）
+            if (phase === "splash") {
+                return;
+            }
+        }
+
+        // ======================================================================
+        // 连发（auto-repeat）判定 —— IE9 的 JScript 里没有 e.repeat
+        // ----------------------------------------------------------------------
+        // 【为什么不用「时间窗」】Windows 的首次 auto-repeat 出现在按下后 250~500ms，
+        //   而人手刻意连按两次最快也要 80~100ms —— 前者「最早时刻」比后者「最晚时刻」
+        //   还慢，两个区间是重叠的，因此**任何单一时间阈值都必然误判其中一类**
+        //   （50ms 阈值会让长按 500ms 推进 2 次，正好打穿「长按只算一次」的验收）。
+        //   唯一可靠的信号是 keyup：按下置闩、抬起拔闩，闩在位期间的 keydown 即连发。
+        // 【KEY_REPEAT_GAP_MS 兜底】万一 keyup 丢失（Alt+Tab、焦点被夺），闩会永久在位
+        //   从而锁死键盘。此时若距最近一次 keydown 已超过该窗口，视为「真人重新按下」。
+        //   取值 800ms：远大于连发间隔（约 33ms），又远小于真人重新按键（通常 >1s）。
+        // ======================================================================
+        var KEY_REPEAT_GAP_MS = 800;
+        var keyHeld = {};      // keyCode -> true 表示「该键按下后尚未抬起」
+        var keyHeldAt = {};    // keyCode -> 最近一次 keydown 的时间戳
+
+        function clearKeyHeld() {
+            keyHeld = {};
+            keyHeldAt = {};
+        }
+
+        function releaseKeyHeld(code) {
+            if (typeof code !== "number") { return; }
+            keyHeld[code] = false;
+            keyHeldAt[code] = 0;
+        }
+
+        // 闸门一：Ctrl / Alt / Meta 及其组合一律不参与分派，也绝不落入「任意键跳过」。
+        //   Shift 不在拦截面内（Shift+Z 仍是确认；Shift 是字符修饰，不改变语义）。
+        //   O2：Shift+F4 不算全屏 —— F4 是功能键，Shift+功能键本来就是另一套语义。
+        function hasBlockingModifier(code, e) {
+            if (e.ctrlKey === true || e.altKey === true || e.metaKey === true) { return true; }
+            if (e.shiftKey === true && (code === KEY_FULLSCREEN || code === KEY_FULLSCREEN_F4)) {
+                return true;
+            }
+            return false;
+        }
+
+        // O1：单独按下修饰键本身（Shift 16 / Ctrl 17 / Alt 18 / Win 91,92）不算「按键」。
+        //   否则单按 Shift 就会整段跳过闪屏，而单按 Ctrl / Alt 不会 —— 三键行为不一致。
+        function isModifierKeyCode(code) {
+            return (code === 16 || code === 17 || code === 18 || code === 91 || code === 92);
+        }
+
+        // 闸门三：连发判定。keyHeldAt 在入口即刷新，使兜底窗的语义恒为
+        //   「距最近一次 keydown 的时长」，而不是「距首次按下」，长按不会周期性复发。
+        function isAutoRepeat(code, e) {
+            var now = Date.now();
+            var prev = keyHeldAt[code];
+            if (typeof prev !== "number") { prev = 0; }
+            var gap = now - prev;
+            keyHeldAt[code] = now;
+            if (e && e.repeat === true) { keyHeld[code] = true; return true; }
+            if (keyHeld[code] === true && gap < KEY_REPEAT_GAP_MS) { return true; }
+            keyHeld[code] = true;
+            return false;
+        }
+
+        // 唯一按键入口：ESC 绝对优先，其余交给 dispatchKey 按阶段分派
+        document.onkeydown = function(e) {
+            e = e || window.event;
+            var code = (typeof e.keyCode === "number") ? e.keyCode : 0;
+            if (e.key === "Escape" || e.keyCode === 27) {
+                // Esc 仅预留作后续菜单功能：当前不退出、不跳过、不触发任何动作
+                return;                 // 预留：后续菜单功能接入点（按请求6）
+            }
+            // F5：按请求6 无任何功能；同时抑制 IE 默认 F5 刷新，避免重载闪屏对光敏性患者有害
+            if (code === 116) {
+                e.returnValue = false;
+                return false;
+            }
+            // V1.165：设置终端打开时，按键只服务于设置导航，不再派发到主菜单
+            // 主操作为 ←/→ 左右移动选择（也兼容 ↑/↓，避免底层菜单被误移）
+            if (settingsOpen) {
+                e.returnValue = false;
+                if (code === 37 || code === 38) { spMoveSel(-1); return false; }   // ← / ↑ 选择左移
+                if (code === 39 || code === 40) { spMoveSel(1); return false; }    // → / ↓ 选择右移
+                if (code === 90) { spActivateSel(); return false; } // Z 确认
+                if (code === 88) { spCloseSettings(); return false; } // X 取消/关闭
+                return false;
+            }
+            // V1.165：列表导航页打开时，按键只服务于列表导航
+            if (listOpen) {
+                e.returnValue = false;
+                if (code === 38 || code === 40) { lpMove(code === 40 ? 1 : -1); return false; } // ↑ / ↓ 选择
+                if (code === 90) { lpActivate(); return false; } // Z 进入
+                if (code === 88) { lpClose(); return false; }    // X 关闭
+                return false;
+            }
+            // 闸门一：修饰键组合（Ctrl / Alt / Meta，以及 Shift+F4）不参与分派
+            if (hasBlockingModifier(code, e)) {
+                releaseKeyHeld(code);
+                return true;
+            }
+            // 闸门二：单独按下修饰键本身不算按键（Shift / Ctrl / Alt / Win，与 O1 配套）
+            if (isModifierKeyCode(code)) {
+                return true;
+            }
+            // 闸门三：系统连发（长按）只算一次按下
+            if (isAutoRepeat(code, e)) {
+                return true;
+            }
+            dispatchKey(code, e);
+            if (code === KEY_FULLSCREEN || code === KEY_FULLSCREEN_F4) {
+                return false;   // 双保险：取消 IE F4 默认行为（地址栏历史）
+            }
+            // 新增导航键在 register 里写了 e.returnValue=false，这里透传给 IE 事件模型
+            if (e.returnValue === false) { return false; }
+            return true;
+        };
+
+
+        var story = [
+            { speaker: "阝牙", content: "致此人之冥，刻意无维。" },
+            { speaker: "系统", content: "已切换至安全窗口模式。按 ESC 键或右上角按钮可随时退出。" },
+            { speaker: "邪莫胜", content: "观测者，这次不会再卡死了。" },
+            { speaker: "系统", content: "【提示】你可以随意修改这行代码里的文本。" }
+        ];
+        
+        var currentNode = 0;
+        var isTyping = false;
+        var typeTimer;
+        
+        var textEl = document.getElementById('text');
+        var speakerEl = document.getElementById('speaker');
+        var dialogueBox = document.getElementById('dialogue-box');
+
+        function typeWriter(text, i) {
+            if (i === 0) {
+                textEl.innerHTML = "";
+                isTyping = true;
+            }
+            if (i < text.length) {
+                textEl.innerHTML += text.charAt(i);
+                typeTimer = setTimeout(function() { typeWriter(text, i + 1); }, 50);
+            } else {
+                isTyping = false;
+            }
+        }
+
+        function playNode(index) {
+            var node = story[index];
+            speakerEl.innerHTML = node.speaker;
+            typeWriter(node.content, 0);
+        }
+
+        dialogueBox.onclick = function() {
+            if (isTyping) {
+                clearTimeout(typeTimer);
+                textEl.innerHTML = story[currentNode].content;
+                isTyping = false;
+            } else {
+                if (currentNode < story.length - 1) {
+                    currentNode++;
+                    playNode(currentNode);
+                }
+            }
+        };
+
+        // 首句剧情已移入 finishSplash()，由闪屏结束/跳过回调触发
+    </script>
+    <!-- V1.166：XZArchive 已内联进本文件（去掉外部脚本引用依赖，便于单文件分发）；xz-archive.js 保留为开发备份副本 -->
+    <script>
+    /* =====================================================================
+     * XZArchive — Project Archive 编号槽位存档系统（适配 XsureZrcnmve / HTA）
+     * 借鉴对象：RPG Maker MV 游戏「我所向往的美好结局2.0 序章」的 Zzy.ASL 自定义存档
+     *   - 元数据文件 + 编号槽位（对应 Zzy.ASL.StartFileId=40 的思路）
+     *   - C(67) 存档 / F3(114) 打开存档列表 / ←→(37/39) 选择 / Z(90) 读取 / X(88) 关闭
+     *   - 黑白色面板（与 V1.164 设置终端一致）
+     * 持久化：用 FileSystemObject 写到 HTA 同目录的 ProjectArchive.dat（JSON）
+     * 全屏：HTA 环境用 window.moveTo+resizeTo（原生 API 在 HTA 不可用），
+     *       浏览器环境用原生 requestFullscreen / msRequestFullscreen。
+     * 集成：本副本已内联进 XsureZrcnmve.hta（V1.166 起去外部依赖）；
+     *       外部 xz-archive.js 仅作开发备份，不再被外部脚本标签引用。
+     * ===================================================================== */
+    (function () {
+        "use strict";
+        var XZArchive = {};
+        window.XZArchive = XZArchive;
+
+        /* ---------- 配置 ---------- */
+        var START_SLOT = 1;                 // 槽位从 1 开始编号
+        var META_FILE  = "ProjectArchive.dat";
+
+        /* ---------- 运行状态 ---------- */
+        var fsObj  = null;
+        var open   = false;                 // 存档列表面板是否打开
+        var slots  = [];                    // [{ id, name, ts, data }]
+        var cursor = 0;                     // 当前选中槽位
+
+        /* ---------- 持久化（fso，仅 HTA/IE 可用；不可用则降级内存） ---------- */
+        function fsoReady() {
+            try {
+                if (!fsObj) { fsObj = new ActiveXObject("Scripting.FileSystemObject"); }
+                return !!fsObj;
+            } catch (e) { return false; }
+        }
+        function baseDir() {
+            try {
+                if (fsoReady()) {
+                    var p = location.pathname;            // HTA 下为本地路径
+                    var folder = fsObj.GetParentFolderName(p);
+                    return folder || ".";
+                }
+            } catch (e) {}
+            return ".";
+        }
+        function metaPath() {
+            var d = baseDir();
+            return (d && d !== ".") ? (d + "\\" + META_FILE) : META_FILE;
+        }
+        function load() {
+            slots = [];
+            if (!fsoReady()) return;
+            try {
+                var p = metaPath();
+                if (fsObj.FileExists(p)) {
+                    var ts = fsObj.OpenTextFile(p, 1, false);
+                    var txt = ts.ReadAll(); ts.Close();
+                    var obj = JSON.parse(txt || "[]");
+                    if (Array.isArray(obj)) slots = obj;
+                }
+            } catch (e) { slots = []; }
+        }
+        function persist() {
+            if (!fsoReady()) return;
+            try {
+                var p = metaPath();
+                var ts = fsObj.CreateTextFile(p, true);
+                ts.Write(JSON.stringify(slots)); ts.Close();
+            } catch (e) {}
+        }
+
+        /* ---------- 取当前要存档的快照（演示数据；接真实进度请替换 snapshot） ---------- */
+        function snapshot() {
+            return {
+                menu:  (typeof MENU_ITEMS !== "undefined")  ? MENU_ITEMS.slice()          : [],
+                until: (typeof archiveSubtitleUntil !== "undefined") ? archiveSubtitleUntil : 0,
+                savedAt: new Date().toISOString()
+            };
+        }
+
+        /* ---------- 对外操作 ---------- */
+        XZArchive.save = function (name, data) {
+            load();
+            var id = slots.length ? (slots[slots.length - 1].id + 1) : START_SLOT;
+            var label = name || ("存档 " + id + "  " + new Date().toLocaleString());
+            slots.push({ id: id, name: label, ts: Date.now(), data: (data || snapshot()) });
+            persist();
+            if (typeof archiveSubtitleUntil !== "undefined") { archiveSubtitleUntil = Date.now() + 3000; }
+            return id;
+        };
+        XZArchive.getSlots = function () { return slots.slice(); };
+        XZArchive.openList  = function () { load(); cursor = slots.length ? 0 : 0; open = true;  render(); };
+        XZArchive.closeList = function () { open = false; hide(); };
+        XZArchive.loadSlot  = function (idx) {
+            var s = slots[idx]; if (!s) return false;
+            if (typeof archiveSubtitleUntil !== "undefined") { archiveSubtitleUntil = Date.now() + 3000; }
+            return true;
+        };
+
+        /* ---------- 完整全屏助手（适配 HTA 与浏览器） ---------- */
+        XZArchive.toggleFullscreen = function () {
+            var doc = document;
+            var el  = doc.documentElement || doc.body;
+            var req = el.requestFullscreen || el.msRequestFullscreen || el.webkitRequestFullScreen;
+            var exit = doc.exitFullscreen || doc.msExitFullscreen || doc.webkitCancelFullScreen;
+            var isFs = doc.fullscreenElement || doc.msFullscreenElement || doc.webkitFullscreenElement;
+            var isHta = (typeof window.external !== "undefined") &&
+                        /HTA/i.test(navigator.userAgent || "");
+            try {
+                if (!isFs) {
+                    if (isHta) {
+                        window.moveTo(0, 0);
+                        window.resizeTo(screen.width, screen.height);
+                    } else if (req) {
+                        req.call(el, Element && Element.ALLOW_KEYBOARD_INPUT);
+                    }
+                } else if (isHta) {
+                    // 还原交给原 F4 逻辑；此处仅占位，不重复实现
+                } else if (exit) {
+                    exit.call(doc);
+                }
+            } catch (e) {}
+        };
+
+        /* ---------- 面板 UI（黑/白，绝对定位，兼容 IE9 无 flex/transform 前缀） ---------- */
+        function ensureLayer() {
+            var el = document.getElementById("xz-archive-layer");
+            if (el) return el;
+            el = document.createElement("div");
+            el.id = "xz-archive-layer";
+            el.style.cssText = "position:absolute;left:0;top:0;right:0;bottom:0;z-index:9000;display:none;"
+                + "background:rgba(8,8,8,0.94);color:#f0f0f0;font-family:'Microsoft YaHei',sans-serif;";
+            el.innerHTML =
+                '<div id="xz-archive-box" style="position:absolute;left:50%;top:50%;width:600px;'
+                + '-ms-transform:translate(-50%,-50%);transform:translate(-50%,-50%);'
+                + 'border:1px solid rgba(255,255,255,0.20);padding:18px 20px;font-family:\'Microsoft YaHei\',sans-serif;">'
+                +   '<div style="font-family:\'Courier New\',monospace;font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:4px;">[ SYSTEM_MENU ] <span style="font-size:10px;color:#aaa;">V1.166</span></div>'
+                +   '<div style="font-family:\'Courier New\',monospace;font-size:11px;color:#888;margin-bottom:12px;">PROJECT ARCHIVE &middot; 存档列表 &middot; <span style="color:#888;">BGM: Narvik Snow</span></div>'
+                +   '<div id="xz-archive-list" style="min-height:160px;"></div>'
+                +   '<div style="margin-top:12px;font-family:\'Courier New\',monospace;font-size:10px;color:#999;">&larr;/&rarr; 选择 &middot; Z 读取 &middot; X 关闭 &middot; C 新存档</div>'
+                + '</div>';
+            document.body.appendChild(el);
+            return el;
+        }
+        function pad2(n) { n = String(n); return n.length >= 2 ? n : ("0" + n); }
+        function escapeHtml(t) {
+            return String(t).replace(/[&<>"]/g, function (c) {
+                return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+            });
+        }
+        function render() {
+            var layer = ensureLayer();
+            var list  = document.getElementById("xz-archive-list");
+            if (!list) return;
+            if (!slots.length) {
+                list.innerHTML = '<div style="color:#999;padding:20px 0;text-align:center;">NO SAVE DATA</div>';
+            } else {
+                var html = "";
+                for (var i = 0; i < slots.length; i++) {
+                    var s = slots[i];
+                    var active = (i === cursor)
+                        ? "background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.6);color:#fff;"
+                        : "border-color:transparent;color:#cfcfcf;";
+                    html += '<div style="padding:8px 12px;border:1px solid;' + active + 'border-radius:6px;margin-bottom:6px;">'
+                        +   '<span style="font-family:\'Courier New\',monospace;font-size:12px;color:#888;margin-right:12px;">[ ' + pad2(s.id) + ' ]</span>'
+                        +   '<span style="font-size:14px;color:#f0f0f0;">' + escapeHtml(s.name) + '</span>'
+                        +   '<span style="float:right;font-family:\'Courier New\',monospace;font-size:10px;color:#888;">'
+                        +     (s.data && s.data.savedAt ? s.data.savedAt.slice(0,10) : '') + '</span></div>';
+                }
+                list.innerHTML = html;
+            }
+            layer.style.display = "block";
+        }
+        function hide() { var el = document.getElementById("xz-archive-layer"); if (el) el.style.display = "none"; }
+
+        /* ---------- 键盘接入：包裹已有的 document.onkeydown（不破坏原逻辑） ---------- */
+        function handle(code, e) {
+            if (open) {
+                e.returnValue = false;
+                if (code === 37 || code === 39) {
+                    if (slots.length) {
+                        cursor += (code === 39) ? 1 : -1;
+                        if (cursor < 0) cursor = slots.length - 1;
+                        if (cursor >= slots.length) cursor = 0;
+                        render();
+                    }
+                    return true;
+                }
+                if (code === 90) { XZArchive.loadSlot(cursor); return true; }
+                if (code === 88) { XZArchive.closeList(); return true; }
+                if (code === 67) { XZArchive.save(); render(); return true; }
+                return true;
+            }
+            if (code === 67)  { XZArchive.save(); return true; }
+            if (code === 114) { XZArchive.openList(); return true; }
+            return false;
+        }
+
+        function install() {
+            var prev = document.onkeydown;
+            document.onkeydown = function (e) {
+                e = e || window.event;
+                var code = (typeof e.keyCode === "number") ? e.keyCode : 0;
+                if (handle(code, e)) return false;
+                if (prev) return prev(e);
+                return true;
+            };
+        }
+
+        XZArchive.install = install;
+        XZArchive.handle  = handle;
+        XZArchive.ensureLayer = ensureLayer;
+
+        if (document.readyState === "complete") {
+            install();
+        } else if (document.addEventListener) {
+            window.addEventListener("load", install);
+        } else {
+            window.attachEvent("onload", install);
+        }
+    })();
+    </script>
+</body>
+</html>
