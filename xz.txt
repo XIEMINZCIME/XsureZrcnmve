@@ -20,3 +20,10 @@ V1.166 更新内容
 · 版本号升 V1.166（sp-title / 关于 / 画布 / 更新横幅 / XZArchive 列表头栏）
 · 已推送至 GitHub 仓库 XIEMINZCIME/XsureZrcnmve：保留远程 LICENSE/README，新增工程源码（101 个文件；.exe / .zip / 3D 二进制 .glb/.vrm/.blend / 构建缓存 已忽略）
 · F5 无功能；Esc 仅预留；F4 全屏；F1~12 不重启/跳过（保持不变）
+
+V1.167 更新内容
+· F3 改派：在主界面（moxin）闪现「作者模型」预览浮层（作者形象图 xieminzcime.jpg），约 4 秒后自动隐藏；原「F3 查看所有存档」改由主菜单「列表 → Project Archive」进入（XZArchive 不再拦截 114）
+· 右下角新增 xzc 徽标（固定定位），点击经 Shell.Application 外部拉起默认浏览器
+· xzc 点击跳转地址更新为你刚上传的 GitHub 仓库（个人主页）：https://github.com/XIEMINZCIME/XsureZrcnmve
+· .exe 源 = XM-Pointer 的 Visual Studio 工程（xm-Pointer.sln：xmPointer.Overlay.vcxproj + xmPointer.Settings.csproj），可用 VS 构建（本环境未确认构建工具链，暂不构建；.exe 仍被 .gitignore 排除）
+· 版本号升 V1.167；F5 无功能；Esc 仅预留；F4 全屏；F1~12 不重启/跳过（保持不变）

@@ -139,6 +139,27 @@
         .lp-statusbar span { position: absolute; top: 12px; }
         .lp-statusbar .lp-foot { right: 16px; color: #777; }
         .lp-statusbar span:first-child { left: 16px; }
+    /* V1.167：右下角 xzc 徽标（点击外部跳转个人主页） */
+    #xzc-badge {
+      position: fixed; right: 14px; bottom: 14px; z-index: 10002;
+      font-family: 'Courier New', monospace; font-size: 12px; font-weight: 700;
+      letter-spacing: 1px; color: #e8e8e8; background: rgba(8,8,8,0.72);
+      border: 1px solid rgba(255,255,255,0.28); padding: 6px 10px; cursor: pointer;
+      -ms-user-select: none; user-select: none;
+    }
+    #xzc-badge:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.6); color: #fff; }
+    /* V1.167：F3 作者模型（moxin / xieminzcime.jpg）预览浮层 */
+    #author-model {
+      position: fixed; left: 50%; top: 46%; z-index: 10003;
+      -ms-transform: translate(-50%, -50%); transform: translate(-50%, -50%);
+      background: rgba(8,8,8,0.92); border: 1px solid rgba(255,255,255,0.22);
+      padding: 10px 12px; text-align: center;
+    }
+    #author-model img { display: block; max-width: 220px; max-height: 220px; margin: 0 auto; }
+    #author-model .am-cap {
+      margin-top: 8px; font-family: 'Courier New', monospace; font-size: 11px;
+      color: #bbb; letter-spacing: 1px;
+    }
     </style>
 </head>
 <body>
@@ -194,7 +215,7 @@
       <div class="sp-window">
         <div class="sp-titlebar">
           <div class="sp-dots"><i></i><i></i><i></i></div>
-          <div class="sp-title">XSURE · [ SETTINGS ] <span class="sp-ver">V1.166</span></div>
+          <div class="sp-title">XSURE · [ SETTINGS ] <span class="sp-ver">V1.167</span></div>
           <div class="sp-status"><span class="sp-dot"></span>SETTINGS</div>
           <button class="sp-theme" onclick="spToggleTheme()">[ REVERSE ]</button>
         </div>
@@ -242,7 +263,7 @@
               <div class="sp-about">
                 <b>XsureZrcnmve</b><br>
                 致此人之冥，刻意无维。<br><br>
-                › 版本: <b>V 1.166</b><br>
+                › 版本: <b>V 1.167</b><br>
                 › 设置 UI: <b>XM-Pointer</b>（用户自研）<br>
                 › 引擎: <b>HTA / Trident (IE9)</b><br>
                 › 运行: <b>exe 主要 · hta 备用 · cmd 副</b><br><br>
@@ -265,7 +286,7 @@
       <div class="lp-window">
         <div class="lp-titlebar">
           <div class="lp-dots"><i></i><i></i><i></i></div>
-          <div class="lp-title">[ SYSTEM_MENU ] <span class="lp-ver">V1.166</span></div>
+          <div class="lp-title">[ SYSTEM_MENU ] <span class="lp-ver">V1.167</span></div>
           <div class="lp-status"><span class="lp-dot"></span>LIST</div>
           <div class="lp-bgm">BGM: Narvik Snow</div>
         </div>
@@ -283,6 +304,14 @@
           <span class="lp-foot">XSURE / ZRCNMVE</span>
         </div>
       </div>
+    </div>
+
+    <!-- V1.167：右下角 xzc 徽标，点击外部跳转个人主页（GitHub 仓库） -->
+    <div id="xzc-badge" onclick="openHomepage()" title="XIEMINZCIME · GitHub">xzc</div>
+    <!-- V1.167：F3 在主界面闪现作者模型（moxin / xieminzcime.jpg）预览，约 4 秒后自动隐藏 -->
+    <div id="author-model" style="display:none;">
+      <img src="xieminzcime.jpg" alt="作者模型" />
+      <div class="am-cap">[ AUTHOR ] 邪冥 · XIEMINZCIME</div>
     </div>
 
     <script>
@@ -446,7 +475,7 @@
             noise: true,
             theme: 'dark'
         };
-        // V1.166 设置持久化：用 fso 写 HTA 同目录 XsureSettings.dat（JSON），重启不丢
+        // V1.167 设置持久化：用 fso 写 HTA 同目录 XsureSettings.dat（JSON），重启不丢
         var SP_FILE = "XsureSettings.dat";
         function spFso() {
             try { return new ActiveXObject("Scripting.FileSystemObject"); } catch (e) { return null; }
@@ -935,7 +964,7 @@
             }
 
             // 底部：版本号 + 片名 / 临时横幅
-            drawMenuText('V 1.166', 24, 686, MENU_CONFIG.SMALL_SCALE,
+            drawMenuText('V 1.167', 24, 686, MENU_CONFIG.SMALL_SCALE,
                          'rgba(242,244,239,0.8)', 1);
             var bottomLine = (bannerMsg && now < bannerUntil) ? bannerMsg : MENU_CONFIG.BOTTOM_TITLE;
             drawMenuText(bottomLine,
@@ -1035,7 +1064,7 @@
             var el = document.getElementById("changelog");
             if (!el) { return; }
             var html = ''
-                + '<div class="cl-title">V 1.166 更新内容</div>'
+                + '<div class="cl-title">V 1.167 更新内容</div>'
                 + '<div>· F5：无任何功能（重启闪屏的光晕对光敏性患者有害，已移除）</div>'
                 + '<div>· Esc：仅预留作后续菜单功能，当前不退出、不跳过、不触发</div>'
                 + '<div>· 主界面 Settings 开放全局设置终端（XM-Pointer 风格）</div>'
@@ -1573,6 +1602,30 @@
         }
 
         // 唯一按键入口：ESC 绝对优先，其余交给 dispatchKey 按阶段分派
+        // V1.167：F3 在主界面闪现作者模型（moxin / xieminzcime.jpg），约 4 秒后自动隐藏
+        var authorModelTimer = null;
+        function showAuthorModel() {
+            var el = document.getElementById("author-model");
+            if (el) { el.style.display = "block"; }
+            if (authorModelTimer) { clearTimeout(authorModelTimer); }
+            authorModelTimer = setTimeout(function () {
+                var e = document.getElementById("author-model");
+                if (e) { e.style.display = "none"; }
+            }, 4000);
+        }
+        // V1.167：右下角 xzc 徽标 → 外部浏览器跳转个人主页（刚上传的 GitHub 地址）
+        function openHomepage() {
+            openExternal("https://github.com/XIEMINZCIME/XsureZrcnmve");
+        }
+        function openExternal(url) {
+            try {
+                var sa = new ActiveXObject("Shell.Application");
+                sa.ShellExecute(url);
+                return;
+            } catch (e1) {}
+            try { window.open(url, "_blank"); } catch (e2) {}
+        }
+
         document.onkeydown = function(e) {
             e = e || window.event;
             var code = (typeof e.keyCode === "number") ? e.keyCode : 0;
@@ -1616,6 +1669,8 @@
             if (isAutoRepeat(code, e)) {
                 return true;
             }
+            // V1.167：F3 在主界面闪现作者模型（moxin）预览，约 4 秒后自动隐藏
+            if (code === 114) { showAuthorModel(); e.returnValue = false; return false; }
             dispatchKey(code, e);
             if (code === KEY_FULLSCREEN || code === KEY_FULLSCREEN_F4) {
                 return false;   // 双保险：取消 IE F4 默认行为（地址栏历史）
@@ -1675,7 +1730,7 @@
 
         // 首句剧情已移入 finishSplash()，由闪屏结束/跳过回调触发
     </script>
-    <!-- V1.166：XZArchive 已内联进本文件（去掉外部脚本引用依赖，便于单文件分发）；xz-archive.js 保留为开发备份副本 -->
+    <!-- V1.167：XZArchive 已内联进本文件（去掉外部脚本引用依赖，便于单文件分发）；xz-archive.js 保留为开发备份副本 -->
     <script>
     /* =====================================================================
      * XZArchive — Project Archive 编号槽位存档系统（适配 XsureZrcnmve / HTA）
@@ -1686,7 +1741,7 @@
      * 持久化：用 FileSystemObject 写到 HTA 同目录的 ProjectArchive.dat（JSON）
      * 全屏：HTA 环境用 window.moveTo+resizeTo（原生 API 在 HTA 不可用），
      *       浏览器环境用原生 requestFullscreen / msRequestFullscreen。
-     * 集成：本副本已内联进 XsureZrcnmve.hta（V1.166 起去外部依赖）；
+     * 集成：本副本已内联进 XsureZrcnmve.hta（V1.167 起去外部依赖）；
      *       外部 xz-archive.js 仅作开发备份，不再被外部脚本标签引用。
      * ===================================================================== */
     (function () {
@@ -1812,7 +1867,7 @@
                 '<div id="xz-archive-box" style="position:absolute;left:50%;top:50%;width:600px;'
                 + '-ms-transform:translate(-50%,-50%);transform:translate(-50%,-50%);'
                 + 'border:1px solid rgba(255,255,255,0.20);padding:18px 20px;font-family:\'Microsoft YaHei\',sans-serif;">'
-                +   '<div style="font-family:\'Courier New\',monospace;font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:4px;">[ SYSTEM_MENU ] <span style="font-size:10px;color:#aaa;">V1.166</span></div>'
+                +   '<div style="font-family:\'Courier New\',monospace;font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:4px;">[ SYSTEM_MENU ] <span style="font-size:10px;color:#aaa;">V1.167</span></div>'
                 +   '<div style="font-family:\'Courier New\',monospace;font-size:11px;color:#888;margin-bottom:12px;">PROJECT ARCHIVE &middot; 存档列表 &middot; <span style="color:#888;">BGM: Narvik Snow</span></div>'
                 +   '<div id="xz-archive-list" style="min-height:160px;"></div>'
                 +   '<div style="margin-top:12px;font-family:\'Courier New\',monospace;font-size:10px;color:#999;">&larr;/&rarr; 选择 &middot; Z 读取 &middot; X 关闭 &middot; C 新存档</div>'
@@ -1870,7 +1925,7 @@
                 return true;
             }
             if (code === 67)  { XZArchive.save(); return true; }
-            if (code === 114) { XZArchive.openList(); return true; }
+            // V1.167：F3 已改派给主界面作者模型预览（见主脚本 onkeydown），此处不再拦截 114
             return false;
         }
 
