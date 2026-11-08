@@ -19,6 +19,7 @@
 ### V1.168（本版）
 - **全屏 ↔ 无边框全屏 双模式**：设置终端新增「显示模式」三选一（窗口 / 全屏 / 无边框全屏），F4 按当前模式开关；无边框模式把窗口外框偏移到屏幕外、客户区铺满，边框与标题栏不可见，不动 HTA 静态 `BORDER`/`CAPTION`。
 - **Project Archive 全面更新**：`capture` / `restore` 可挂接钩子（等主界面代码覆盖）、覆盖指定槽位、`Delete`(46) 删除、容量上限 12（满时可见提示不静默丢弃）、完整时间戳；面板外观对齐黑白等宽终端风格。
+- **Project Archive 预告区块**：存档列表新增「新手地图 / NOVICE MAP」即将推出预告（引用 `novice-map.jpg` 预告图）；后续主界面代码可经 `XZArchive.renderMaps(html)` 把预告区块替换为真实地图列表（非侵入扩展点）。
 - 修复退出全屏的边界缺陷：自校准被拒时用保存尺寸精确还原，避免窗口尺寸错乱。
 - 版本号统一升 V1.168。
 
@@ -92,6 +93,7 @@
 | `manifest.json` | 引擎清单（入口 / 版本 / 运行时声明） |
 | `xzc.ico` | HTA 窗口图标 |
 | `xz.jpg` / `ga.jpg` / `xieminzcime.jpg` / `qidoy.jpg` | HTA 引用的图片资源 |
+| `novice-map.jpg` | Project Archive「新手地图 / NOVICE MAP」预告图 |
 | `xz.txt` | 逐版本更新日志（V1.164 – V1.168） |
 | `README.md` | 本说明 |
 
