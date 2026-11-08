@@ -230,8 +230,13 @@
             <section class="sp-pane" data-pane="display">
               <div class="sp-pane-title">DISPLAY · 显示</div>
               <div class="sp-switch-row">
-                <div><div class="sp-switch-label">全屏模式 (F4)</div><div class="sp-switch-sub">像 Minecraft 那样进入全屏</div></div>
-                <button class="sp-switch-btn" data-toggle="fullscreen" onclick="spToggleSwitch(this)">[ OFF ]</button>
+                <div><div class="sp-switch-label">显示模式 (F4)</div><div class="sp-switch-sub">普通全屏保留边框与标题栏；无边框全屏让客户区铺满屏幕、边框移出可视区。窗口 = 启动后保持窗口态</div></div>
+                <div class="sp-btn-group" style="margin-top:10px;">
+                  <button class="sp-opt-btn" data-opt="displayMode" data-value="window" onclick="spSelectOpt(this)">窗口</button>
+                  <button class="sp-opt-btn on" data-opt="displayMode" data-value="fullscreen" onclick="spSelectOpt(this)">全屏</button>
+                  <button class="sp-opt-btn" data-opt="displayMode" data-value="borderless" onclick="spSelectOpt(this)">无边框全屏</button>
+                </div>
+                <div style="clear:both;"></div>
               </div>
               <div class="sp-switch-row">
                 <div><div class="sp-switch-label">启动更新横幅</div><div class="sp-switch-sub">进入主菜单后显示 6.5 秒更新内容</div></div>
@@ -295,7 +300,7 @@
           <div id="lp-list">
             <div class="lp-row" data-act="archive"><span class="lp-idx">01</span><span class="lp-label">PROJECT ARCHIVE</span><span class="lp-sub">项目归档 / 存档列表</span><span class="lp-arrow">›</span></div>
             <div class="lp-row" data-act="settings"><span class="lp-idx">02</span><span class="lp-label">SETTINGS</span><span class="lp-sub">全局设置终端</span><span class="lp-arrow">›</span></div>
-            <div class="lp-row" data-act="fullscreen"><span class="lp-idx">03</span><span class="lp-label">FULLSCREEN</span><span class="lp-sub">切换全屏 (F4)</span><span class="lp-arrow">›</span></div>
+            <div class="lp-row" data-act="fullscreen"><span class="lp-idx">03</span><span class="lp-label">FULLSCREEN</span><span class="lp-sub" id="lp-fs-sub">切换全屏 (F4) · 全屏</span><span class="lp-arrow">›</span></div>
             <div class="lp-row" data-act="reality"><span class="lp-idx">04</span><span class="lp-label">RETURN TO REALITY</span><span class="lp-sub">退出观测</span><span class="lp-arrow">›</span></div>
           </div>
         </div>
@@ -473,8 +478,42 @@
             changelog: true,
             safe: false,
             noise: true,
-            theme: 'dark'
+            theme: 'dark',
+            displayMode: 'fullscreen'   // window / fullscreen / borderless
         };
+
+        // ----- 显示模式偏好（与窗口几何层解耦，这里只存选择值） -----
+        // HTA:APPLICATION 的 BORDER / CAPTION 是启动时静态属性，运行时改 DOM 无效；
+        // 两种全屏模式的差别靠「外框几何补偿」实现，不靠改静态属性。
+        var DISPLAY_MODE_WINDOW     = "window";
+        var DISPLAY_MODE_FULLSCREEN = "fullscreen";
+        var DISPLAY_MODE_BORDERLESS = "borderless";
+        var DISPLAY_MODE_LABELS = {
+            window: "窗口",
+            fullscreen: "全屏",
+            borderless: "无边框全屏"
+        };
+        function normalizeDisplayMode(mode) {
+            if (mode === DISPLAY_MODE_BORDERLESS) { return DISPLAY_MODE_BORDERLESS; }
+            if (mode === DISPLAY_MODE_WINDOW) { return DISPLAY_MODE_WINDOW; }
+            return DISPLAY_MODE_FULLSCREEN;
+        }
+        function currentDisplayMode() {
+            return normalizeDisplayMode(spSettings.displayMode);
+        }
+        function displayModeLabel(mode) {
+            return DISPLAY_MODE_LABELS[normalizeDisplayMode(mode)] || "全屏";
+        }
+        // 只刷新控件高亮与列表页副标题；绝不改窗口几何（启动时调用也不会闪）
+        function syncDisplayModeUI() {
+            var mode = currentDisplayMode();
+            var opts = document.querySelectorAll('.sp-opt-btn[data-opt="displayMode"]');
+            for (var i = 0; i < opts.length; i++) {
+                opts[i].className = "sp-opt-btn" + (opts[i].getAttribute("data-value") === mode ? " on" : "");
+            }
+            var sub = document.getElementById("lp-fs-sub");
+            if (sub) { sub.innerHTML = "切换全屏 (F4) · " + displayModeLabel(mode); }
+        }
         // V1.167 设置持久化：用 fso 写 HTA 同目录 XsureSettings.dat（JSON），重启不丢
         var SP_FILE = "XsureSettings.dat";
         function spFso() {
@@ -518,6 +557,9 @@
         function spApplyLoadedSettings() {
             spApplyTheme(spSettings.theme);
             menuSafeMode = !!spSettings.safe;
+            // 只恢复选择值：启动时不自动改窗口几何，避免启动闪烁
+            spSettings.displayMode = normalizeDisplayMode(spSettings.displayMode);
+            syncDisplayModeUI();
         }
         spLoadSettings();
         spApplyLoadedSettings();
@@ -830,6 +872,8 @@
         function spSelectOpt(btn) {
             var opt = btn.getAttribute("data-opt");
             var val = btn.getAttribute("data-value");
+            // 显示模式走 setDisplayMode：同步持久化、按钮高亮、列表页副标题与（可能已在全屏的）几何
+            if (opt === "displayMode") { setDisplayMode(val); return; }
             var group = document.querySelectorAll('.sp-opt-btn[data-opt="' + opt + '"]');
             for (var i = 0; i < group.length; i++) {
                 group[i].className = "sp-opt-btn" + (group[i] === btn ? " on" : "");
@@ -869,6 +913,8 @@
                 opts[j].className = "sp-opt-btn" + (opts[j].getAttribute("data-value") === spSettings.theme ? " on" : "");
             }
             spApplyTheme(spSettings.theme);
+            // 双模式全屏：重启 / 重开设置终端时，三选一按钮与列表页副标题一并恢复
+            syncDisplayModeUI();
         }
 
         // ===== V1.165 列表导航页（控制终端风格 · 参考 xiemi.eu.cc/min 与游戏读档列表）=====
@@ -1285,72 +1331,164 @@
             }
         }
 
-        function toggleFullscreen() {
+        // ======================================================================
+        // 显示模式层：普通全屏（带边框/标题栏） / 无边框全屏（客户区铺满屏幕）
+        // ----------------------------------------------------------------------
+        // HTA:APPLICATION 的 BORDER / CAPTION 是启动时静态属性，运行时改 DOM 属性无效；
+        // 也不能把静态值直接改成 none —— 那样两种模式就没有区别了。
+        // 无边框全屏靠「外框几何补偿」把边框与标题栏推出屏幕可视区：
+        //   设 sw=screen.width, sh=screen.height。
+        //   先按普通全屏进入 moveTo(0,0)+resizeTo(sw,sh)：外框原点=(0,0)、外框尺寸=sw x sh。
+        //   二次自校准得到：
+        //     ox,oy = 客户区原点相对外框原点的偏移（window.screenLeft / screenTop）
+        //     dw,dh = 外框与客户区的尺寸差（sw - clientW, sh - clientH）
+        //   要让「客户区」正好覆盖 (0,0)-(sw,sh)：
+        //     客户区原点 = 外框原点 + (ox,oy) = (0,0)  → 外框原点 = (-ox,-oy)
+        //     客户区尺寸 = 外框尺寸 - (dw,dh) = sw x sh → 外框尺寸 = (sw+dw, sh+dh)
+        //   故精修为 moveTo(-ox,-oy) + resizeTo(sw+dw, sh+dh)。
+        //   测量失败（chrome / offset 为 null 或超出合理范围）时保持普通全屏，安全降级。
+        //   退出按「进入前保存值」还原，与当前外框位置无关，两种模式共用一条退出路径。
+        // ======================================================================
+        var displayModeRefineTimer = null;
+
+        function cancelDisplayModeRefine() {
+            if (displayModeRefineTimer) {
+                try { clearTimeout(displayModeRefineTimer); } catch (errCancelRefine) {}
+                displayModeRefineTimer = null;
+            }
+        }
+
+        // 自校准结果必须都是有限的非负数且不超过合理上限，才敢拿去做几何补偿
+        function measuredChromeUsable(chrome, offset) {
+            if (!chrome || !offset) { return false; }
+            if (typeof chrome.dw !== "number" || typeof chrome.dh !== "number") { return false; }
+            if (typeof offset.ox !== "number" || typeof offset.oy !== "number") { return false; }
+            if (!isFinite(chrome.dw) || !isFinite(chrome.dh)) { return false; }
+            if (!isFinite(offset.ox) || !isFinite(offset.oy)) { return false; }
+            if (chrome.dw < 0 || chrome.dw > 128 || chrome.dh < 0 || chrome.dh > 128) { return false; }
+            if (offset.ox < 0 || offset.ox > 64 || offset.oy < 0 || offset.oy > 128) { return false; }
+            return true;
+        }
+
+        function readOriginOffset() {
             try {
-                if (!fullscreenActive) {
-                    fullscreenSaved = readWindowGeometry();
-                    fullscreenChrome = null;
-                    fullscreenOriginOffset = null;
-                    window.moveTo(0, 0);
-                    // screenLeft/screenTop 报的是客户区原点，moveTo 设的是外框原点。
-                    // 此刻外框原点为 (0,0)，读到的小数值即两者的固定偏移。
-                    try {
-                        var oxNow = window.screenLeft;
-                        var oyNow = window.screenTop;
-                        if (typeof oxNow === "number" && typeof oyNow === "number"
-                            && oxNow >= 0 && oxNow <= 64 && oyNow >= 0 && oyNow <= 128) {
-                            fullscreenOriginOffset = { ox: oxNow, oy: oyNow };
-                        }
-                    } catch (errOrigin0) {
-                        fullscreenOriginOffset = null;
-                    }
-                    window.resizeTo(screen.width, screen.height);
-                    fullscreenActive = true;
-                    // resizeTo 生效后客户区尺寸才稳定，稍后再次自校准（含位置偏移）
-                    setTimeout(function() {
-                        try {
-                            fullscreenChrome = readWindowChrome();
-                            var ox = window.screenLeft;
-                            var oy = window.screenTop;
-                            if (typeof ox === "number" && typeof oy === "number"
-                                && ox >= 0 && ox <= 64 && oy >= 0 && oy <= 128) {
-                                fullscreenOriginOffset = { ox: ox, oy: oy };
-                            }
-                        } catch (errChrome) {
-                            fullscreenChrome = null;
-                        }
-                    }, 80);
-                } else {
-                    var s = fullscreenSaved;
-                    if (s) {
-                        var rw = s.width;
-                        var rh = s.height;
-                        if (fullscreenChrome) {
-                            rw = s.clientW + fullscreenChrome.dw;
-                            rh = s.clientH + fullscreenChrome.dh;
-                        }
-                        var mx = s.left;
-                        var my = s.top;
-                        if (fullscreenOriginOffset) {
-                            mx = s.left - fullscreenOriginOffset.ox;
-                            my = s.top - fullscreenOriginOffset.oy;
-                        }
-                        window.moveTo(mx, my);
-                        window.resizeTo(rw, rh);
-                    }
-                    fullscreenActive = false;
-                    fullscreenSaved = null;
-                    fullscreenChrome = null;
-                    fullscreenOriginOffset = null;
+                var ox = window.screenLeft;
+                var oy = window.screenTop;
+                if (typeof ox === "number" && typeof oy === "number"
+                    && ox >= 0 && ox <= 64 && oy >= 0 && oy <= 128) {
+                    return { ox: ox, oy: oy };
                 }
-            } catch (errFullscreen) {
-                // HTA 中窗口 API 可能受限：安全 no-op，不抛异常、不卡死后续按键
+            } catch (errOrigin) {}
+            return null;
+        }
+
+        // mode = "fullscreen" | "borderless"；"window" 按契约视为 "fullscreen"。
+        // 重复调用（setDisplayMode 在全屏态切换模式）时保留首次进入前的外框几何，不覆盖还原目标。
+        function enterDisplayMode(mode) {
+            var want = normalizeDisplayMode(mode);
+            if (want === DISPLAY_MODE_WINDOW) { want = DISPLAY_MODE_FULLSCREEN; }
+            cancelDisplayModeRefine();
+            try {
+                if (!fullscreenSaved) { fullscreenSaved = readWindowGeometry(); }
+                fullscreenChrome = null;
+                fullscreenOriginOffset = null;
+                var sw = screen.width;
+                var sh = screen.height;
+                window.moveTo(0, 0);
+                // 外框原点此刻为 (0,0)，screenLeft/screenTop 即客户区原点的固定偏移
+                var off0 = readOriginOffset();
+                if (off0) { fullscreenOriginOffset = off0; }
+                window.resizeTo(sw, sh);
+                fullscreenActive = true;
+                // resizeTo 生效后客户区尺寸才稳定；二次自校准后再做无边框精修
+                displayModeRefineTimer = setTimeout(function() {
+                    displayModeRefineTimer = null;
+                    try {
+                        if (!fullscreenActive) { return; }
+                        fullscreenChrome = readWindowChrome();
+                        var off = readOriginOffset();
+                        if (off) { fullscreenOriginOffset = off; }
+                        if (want === DISPLAY_MODE_BORDERLESS
+                            && measuredChromeUsable(fullscreenChrome, fullscreenOriginOffset)) {
+                            var dw = fullscreenChrome.dw;
+                            var dh = fullscreenChrome.dh;
+                            var ox = fullscreenOriginOffset.ox;
+                            var oy = fullscreenOriginOffset.oy;
+                            window.moveTo(-ox, -oy);
+                            window.resizeTo(sw + dw, sh + dh);
+                        }
+                        relayoutForViewport();
+                    } catch (errRefine) {
+                        // 精修失败：保持普通全屏，不抛异常、不卡死按键
+                    }
+                }, 80);
+            } catch (errEnter) {
+                // 窗口 API 受限：按「未进入全屏」整体复位，避免状态与实际几何不一致
+                cancelDisplayModeRefine();
                 fullscreenActive = false;
                 fullscreenSaved = null;
                 fullscreenChrome = null;
                 fullscreenOriginOffset = null;
             }
             relayoutForViewport();
+        }
+
+        function exitDisplayMode() {
+            cancelDisplayModeRefine();
+            try {
+                var s = fullscreenSaved;
+                if (s) {
+                    var rw = s.width;
+                    var rh = s.height;
+                    if (fullscreenChrome) {
+                        rw = s.clientW + fullscreenChrome.dw;
+                        rh = s.clientH + fullscreenChrome.dh;
+                    }
+                    var mx = s.left;
+                    var my = s.top;
+                    if (fullscreenOriginOffset) {
+                        mx = s.left - fullscreenOriginOffset.ox;
+                        my = s.top - fullscreenOriginOffset.oy;
+                    }
+                    window.moveTo(mx, my);
+                    window.resizeTo(rw, rh);
+                }
+            } catch (errExit) {
+                // 还原失败也不能留下半改状态
+            }
+            fullscreenActive = false;
+            fullscreenSaved = null;
+            fullscreenChrome = null;
+            fullscreenOriginOffset = null;
+            relayoutForViewport();
+        }
+
+        // 设置终端三选一入口：只改偏好 + 立刻重应用几何（不先退出再进入，避免闪烁）
+        function setDisplayMode(mode) {
+            var want = normalizeDisplayMode(mode);
+            spSettings.displayMode = want;
+            try { spSaveSettings(); } catch (errSaveMode) {}
+            syncDisplayModeUI();
+            if (fullscreenActive) { enterDisplayMode(want); }
+        }
+
+        // 三处调用点（键盘契约 / 设置开关 / 列表页）共用这一个入口，函数名保持不变
+        function toggleFullscreen() {
+            try {
+                if (!fullscreenActive) {
+                    enterDisplayMode(currentDisplayMode());
+                } else {
+                    exitDisplayMode();
+                }
+            } catch (errFullscreen) {
+                // HTA 中窗口 API 可能受限：安全 no-op，不抛异常、不卡死后续按键
+                cancelDisplayModeRefine();
+                fullscreenActive = false;
+                fullscreenSaved = null;
+                fullscreenChrome = null;
+                fullscreenOriginOffset = null;
+                relayoutForViewport();
+            }
         }
 
         // 主菜单取消：清掉 NO SAVE DATA 提示与 hintTimer，不进入游戏、停留菜单
