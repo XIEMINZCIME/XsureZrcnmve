@@ -8,7 +8,7 @@
  * 持久化：用 FileSystemObject 写到 HTA 同目录的 ProjectArchive.dat（JSON）
  * 全屏：HTA 环境用 window.moveTo+resizeTo（原生 API 在 HTA 不可用），
  *       浏览器环境用原生 requestFullscreen / msRequestFullscreen。
- * 集成：V1.167 起已内联进 XsureZrcnmve.hta 单文件；本文件保留为开发备份副本，
+ * 集成：V1.168 起已内联进 XsureZrcnmve.hta 单文件；本文件保留为开发备份副本，
  *       不再被 <script src> 引用（如需外部引用，将本文件放到 HTA 同目录并取消下行注释）：
  *        <script src="xz-archive.js"></script>
  * ===================================================================== */
@@ -136,7 +136,7 @@
             '<div id="xz-archive-box" style="position:absolute;left:50%;top:50%;width:600px;'
             + '-ms-transform:translate(-50%,-50%);transform:translate(-50%,-50%);'
             + 'border:1px solid rgba(255,255,255,0.20);padding:18px 20px;font-family:\'Microsoft YaHei\',sans-serif;">'
-            +   '<div style="font-family:\'Courier New\',monospace;font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:4px;">[ SYSTEM_MENU ] <span style="font-size:10px;color:#aaa;">V1.167</span></div>'
+            +   '<div style="font-family:\'Courier New\',monospace;font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:4px;">[ SYSTEM_MENU ] <span style="font-size:10px;color:#aaa;">V1.168</span></div>'
             +   '<div style="font-family:\'Courier New\',monospace;font-size:11px;color:#888;margin-bottom:12px;">PROJECT ARCHIVE &middot; 存档列表 &middot; <span style="color:#888;">BGM: Narvik Snow</span></div>'
             +   '<div id="xz-archive-list" style="min-height:160px;"></div>'
             +   '<div style="margin-top:12px;font-family:\'Courier New\',monospace;font-size:10px;color:#999;">&larr;/&rarr; 选择 &middot; Z 读取 &middot; X 关闭 &middot; C 新存档</div>'
@@ -195,7 +195,7 @@
         }
         // 未打开时：C 新存档、F3 打开列表
         if (code === 67)  { XZArchive.save(); return true; }       // C 存档
-        // V1.167：F3 已改派给主界面作者模型预览（见主 HTA 脚本 onkeydown），此处不再拦截 114
+        // V1.168：F3 已改派给主界面作者模型预览（见主 HTA 脚本 onkeydown），此处不再拦截 114
         return false;                                              // 未消费，交给原 handler
     }
 
