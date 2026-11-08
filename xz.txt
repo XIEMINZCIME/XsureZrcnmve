@@ -32,5 +32,6 @@ V1.168 更新内容
 · 全屏 ↔ 无边框全屏 双模式可切换：设置终端「显示模式」三选一（窗口 / 全屏 / 无边框全屏）+ F4 开关；无边框模式把窗口外框偏移到屏幕外、客户区铺满，边框与标题栏不可见（不动 HTA:APPLICATION 静态 BORDER/CAPTION，因运行时改无效）
 · F4(115)/契约键(121) 仍走 toggleFullscreen()，保留 Shift+F4 闸门；列表页 [03] FULLSCREEN 副标题随当前模式动态显示
 · Project Archive 全面更新：capture/restore 可挂接钩子（等主界面代码覆盖）、覆盖指定槽位、Delete(46) 删除、容量上限 12（满时给可见提示不静默丢弃）、完整时间戳；面板外观对齐 V1.167 黑白等宽终端风格，[ 编号 ] 行 + 容量指示
+· Project Archive 存档列表新增「新手地图 / NOVICE MAP」即将推出预告区块（引用 novice-map.jpg 预告图，主界面代码可经 XZArchive.renderMaps(html) 把 #xz-archive-maps 替换为真实地图列表，非侵入扩展点）
 · 修复退出全屏时的边界缺陷：自校准被拒（脏 chrome 值）时不再写入 fullscreenChrome，退出改用保存尺寸精确还原，避免窗口尺寸错乱
 · 版本号升 V1.168；F5 无功能；Esc 仅预留；F1~12 不重启/跳过（保持不变）

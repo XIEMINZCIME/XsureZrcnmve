@@ -139,6 +139,18 @@
             +   '<div style="font-family:\'Courier New\',monospace;font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:4px;">[ SYSTEM_MENU ] <span style="font-size:10px;color:#aaa;">V1.168</span></div>'
             +   '<div style="font-family:\'Courier New\',monospace;font-size:11px;color:#888;margin-bottom:12px;">PROJECT ARCHIVE &middot; 存档列表 &middot; <span style="color:#888;">BGM: Narvik Snow</span></div>'
             +   '<div id="xz-archive-list" style="min-height:160px;"></div>'
+            +   '<div id="xz-archive-maps" style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.16);padding-top:10px;">'
+            +     '<div style="font-family:\'Courier New\',monospace;font-size:11px;color:#7fd0a0;letter-spacing:1px;margin-bottom:6px;">&#9679; 即将推出 &middot; COMING SOON</div>'
+            +     '<div style="font-family:\'Courier New\',monospace;font-size:12px;color:#e0e0e0;line-height:1.6;">'
+            +       '<img src="novice-map.jpg" alt="NOVICE MAP" style="float:left;width:160px;height:90px;margin-right:12px;border:1px solid rgba(255,255,255,0.25);" onerror="this.style.display=\'none\'">'
+            +       '<div style="overflow:hidden;">'
+            +         '<b style="color:#ffffff;">新手地图 / NOVICE MAP</b><br>'
+            +         '后续版本将加入可探索的地图模型。<br>'
+            +         '第一人称摄像机 &middot; 山谷坡地场景。'
+            +       '</div>'
+            +       '<div style="clear:both;"></div>'
+            +     '</div>'
+            +   '</div>'
             +   '<div style="margin-top:12px;font-family:\'Courier New\',monospace;font-size:10px;color:#999;">&larr;/&rarr; 选择 &middot; Z 读取 &middot; X 关闭 &middot; C 新存档</div>'
             + '</div>';
         document.body.appendChild(el);
@@ -213,6 +225,11 @@
     XZArchive.install = install;
     XZArchive.handle  = handle;
     XZArchive.ensureLayer = ensureLayer;
+    // 扩展点：后续主界面代码可调用 XZArchive.renderMaps(html) 把 #xz-archive-maps 替换为真实地图列表
+    XZArchive.renderMaps = function (html) {
+        var m = document.getElementById("xz-archive-maps");
+        if (m && typeof html === "string") { m.innerHTML = html; }
+    };
 
     // 关键：必须在主脚本把 document.onkeydown 设好之后再包裹，
     // 所以统一延迟到 load 事件（无论主脚本是同步赋值还是用 onload 注册）。
