@@ -1874,8 +1874,10 @@
      * XZArchive — Project Archive 编号槽位存档系统（适配 XsureZrcnmve / HTA）
      * 借鉴对象：RPG Maker MV 游戏「我所向往的美好结局2.0 序章」的 Zzy.ASL 自定义存档
      *   - 元数据文件 + 编号槽位（对应 Zzy.ASL.StartFileId=40 的思路）
-     *   - C(67) 存档 / F3(114) 打开存档列表 / ←→(37/39) 选择 / Z(90) 读取 / X(88) 关闭
-     *   - 黑白色面板（与 V1.164 设置终端一致）
+     *   - 入口：主菜单「列表」→ 01 PROJECT ARCHIVE；F3(114) 自当前发行版起改派给主界面作者模型预览
+     *   - 面板按键：C(67) 新存档 / S(83) 覆盖当前槽 / Delete(46) 删除 /
+     *     ←→(37/39) 选择 / Z(90) 读取 / X(88) 关闭
+     *   - 黑白等宽终端面板（与设置终端 / 列表页风格一致）
      * 持久化：用 FileSystemObject 写到 HTA 同目录的 ProjectArchive.dat（JSON）
      * 全屏：HTA 环境用 window.moveTo+resizeTo（原生 API 在 HTA 不可用），
      *       浏览器环境用原生 requestFullscreen / msRequestFullscreen。
@@ -1888,14 +1890,16 @@
         window.XZArchive = XZArchive;
 
         /* ---------- 配置 ---------- */
-        var START_SLOT = 1;                 // 槽位从 1 开始编号
+        var START_SLOT = 1;                 // 槽位从 1 开始编号（id 按现有最大 id + 1 分配）
         var META_FILE  = "ProjectArchive.dat";
+        var MAX_SLOTS  = 12;                // 容量上限：追加超出时给可见提示，不静默丢弃
 
         /* ---------- 运行状态 ---------- */
         var fsObj  = null;
         var open   = false;                 // 存档列表面板是否打开
         var slots  = [];                    // [{ id, name, ts, data }]
         var cursor = 0;                     // 当前选中槽位
+        var notice = "";                    // 面板内一行可见反馈（覆盖 / 删除 / 满 / 读档失败）
 
         /* ---------- 持久化（fso，仅 HTA/IE 可用；不可用则降级内存） ---------- */
         function fsoReady() {
@@ -1919,8 +1923,8 @@
             return (d && d !== ".") ? (d + "\\" + META_FILE) : META_FILE;
         }
         function load() {
+            if (!fsoReady()) { return; }   // 降级模式保留内存槽位，不清空
             slots = [];
-            if (!fsoReady()) return;
             try {
                 var p = metaPath();
                 if (fsObj.FileExists(p)) {
@@ -1940,7 +1944,12 @@
             } catch (e) {}
         }
 
-        /* ---------- 取当前要存档的快照（演示数据；接真实进度请替换 snapshot） ---------- */
+        /* ---------- 默认 capture 实现：演示快照，不硬接任何真实进度 ----------
+         * 后续主界面代码可直接覆盖 XZArchive.capture / XZArchive.restore：
+         *   XZArchive.capture = function () { return { ...真实进度... }; };
+         *   XZArchive.restore = function (data) { ...恢复...; return true; };
+         * restore 返回 false（或抛错）时面板显示「读取失败」，不会假装成功。
+         */
         function snapshot() {
             return {
                 menu:  (typeof MENU_ITEMS !== "undefined")  ? MENU_ITEMS.slice()          : [],
@@ -1949,22 +1958,107 @@
             };
         }
 
+        /* ---------- 存档钩子：可被后续主界面代码整体覆盖 ---------- */
+        XZArchive.capture = function () { return snapshot(); };
+        XZArchive.restore = function (data) { return true; };   // 默认 no-op，视为成功
+
+        function setNotice(msg) { notice = String(msg || ""); }
+        // 完整时间戳 YYYY-MM-DD HH:mm；兼容 ms 数值、ISO 字符串、缺失三种输入
+        function formatStamp(value) {
+            var d;
+            if (typeof value === "number" && isFinite(value)) { d = new Date(value); }
+            else if (typeof value === "string" && value) { d = new Date(value); }
+            else { d = new Date(); }
+            if (isNaN(d.getTime())) { d = new Date(); }
+            return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate())
+                + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+        }
+
         /* ---------- 对外操作 ---------- */
-        XZArchive.save = function (name, data) {
+        /* ---------- 对外操作 ---------- */
+        // 追加 / 覆盖两用：传 slotId 时替换该槽（不新增）；未传则追加。
+        // data 省略时调用可覆盖的 capture 钩子取快照；返回 id 表示成功，false 表示被容量上限拒绝。
+        XZArchive.save = function (name, data, slotId) {
             load();
-            var id = slots.length ? (slots[slots.length - 1].id + 1) : START_SLOT;
-            var label = name || ("存档 " + id + "  " + new Date().toLocaleString());
-            slots.push({ id: id, name: label, ts: Date.now(), data: (data || snapshot()) });
+            var payload;
+            if (typeof data === "undefined" || data === null) {
+                try { payload = XZArchive.capture(); } catch (errCapture) { payload = snapshot(); }
+                if (!payload || typeof payload !== "object") { payload = snapshot(); }
+            } else {
+                payload = data;
+            }
+            var now = Date.now();
+            var label = name || ("存档 " + formatStamp(now));
+            var target = -1;
+            var i = 0;
+            if (typeof slotId === "number") {
+                for (i = 0; i < slots.length; i++) {
+                    if (slots[i].id === slotId) { target = i; break; }
+                }
+            }
+            if (target >= 0) {
+                slots[target].name = label;
+                slots[target].ts = now;
+                slots[target].data = payload;
+                setNotice("已覆盖 [ " + pad2(slots[target].id) + " ] " + formatStamp(now));
+                persist();
+                if (typeof archiveSubtitleUntil !== "undefined") { archiveSubtitleUntil = now + 3000; }
+                if (open) { render(); }
+                return slots[target].id;
+            }
+            if (slots.length >= MAX_SLOTS) {
+                setNotice("存档已满 [ " + slots.length + " / " + MAX_SLOTS + " ]：先按 Delete 删除，或按 S 覆盖当前槽");
+                if (open) { render(); }
+                return false;
+            }
+            // id = 现有最大 id + 1；删掉中间槽后也不会复用到旧编号
+            var maxId = START_SLOT - 1;
+            for (i = 0; i < slots.length; i++) {
+                if (typeof slots[i].id === "number" && slots[i].id > maxId) { maxId = slots[i].id; }
+            }
+            var id = maxId + 1;
+            slots.push({ id: id, name: label, ts: now, data: payload });
+            setNotice("已保存 [ " + pad2(id) + " ] " + formatStamp(now));
             persist();
-            if (typeof archiveSubtitleUntil !== "undefined") { archiveSubtitleUntil = Date.now() + 3000; }
+            if (typeof archiveSubtitleUntil !== "undefined") { archiveSubtitleUntil = now + 3000; }
+            if (open) { render(); }
             return id;
         };
         XZArchive.getSlots = function () { return slots.slice(); };
-        XZArchive.openList  = function () { load(); cursor = slots.length ? 0 : 0; open = true;  render(); };
+        XZArchive.openList = function () {
+            load();
+            cursor = 0;
+            open = true;
+            render();
+        };
         XZArchive.closeList = function () { open = false; hide(); };
-        XZArchive.loadSlot  = function (idx) {
-            var s = slots[idx]; if (!s) return false;
+        // 删除并落盘；空列表时 cursor 归 0，越界时收回到最后一项
+        XZArchive.deleteSlot = function (idx) {
+            if (idx < 0 || idx >= slots.length) { setNotice("删除失败：槽位不存在"); if (open) { render(); } return false; }
+            var removed = slots[idx];
+            slots.splice(idx, 1);
+            if (!slots.length) { cursor = 0; }
+            else if (cursor >= slots.length) { cursor = slots.length - 1; }
+            if (cursor < 0) { cursor = 0; }
+            persist();
+            setNotice("已删除 [ " + pad2(removed.id) + " ]");
+            if (open) { render(); }
+            return true;
+        };
+        // 是否读档成功完全由可覆盖的 restore 钩子决定，不再无条件 return true
+        XZArchive.loadSlot = function (idx) {
+            var s = slots[idx];
+            if (!s) { setNotice("读取失败：槽位不存在"); if (open) { render(); } return false; }
+            var ok = false;
+            try { ok = XZArchive.restore(s.data); } catch (errRestore) { ok = false; }
+            if (!ok) {
+                setNotice("读取失败 [ " + pad2(s.id) + " ]：restore 未返回 true");
+                if (open) { render(); }
+                return false;
+            }
+            setNotice("已读取 [ " + pad2(s.id) + " ] " + s.name);
             if (typeof archiveSubtitleUntil !== "undefined") { archiveSubtitleUntil = Date.now() + 3000; }
+            if (open) { render(); }
             return true;
         };
 
@@ -2000,15 +2094,22 @@
             el = document.createElement("div");
             el.id = "xz-archive-layer";
             el.style.cssText = "position:absolute;left:0;top:0;right:0;bottom:0;z-index:9000;display:none;"
-                + "background:rgba(8,8,8,0.94);color:#f0f0f0;font-family:'Microsoft YaHei',sans-serif;";
+                + "background:rgba(8,8,8,0.94);color:#f0f0f0;font-family:'Courier New',monospace;";
             el.innerHTML =
                 '<div id="xz-archive-box" style="position:absolute;left:50%;top:50%;width:600px;'
                 + '-ms-transform:translate(-50%,-50%);transform:translate(-50%,-50%);'
-                + 'border:1px solid rgba(255,255,255,0.20);padding:18px 20px;font-family:\'Microsoft YaHei\',sans-serif;">'
-                +   '<div style="font-family:\'Courier New\',monospace;font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:4px;">[ SYSTEM_MENU ] <span style="font-size:10px;color:#aaa;">V1.167</span></div>'
-                +   '<div style="font-family:\'Courier New\',monospace;font-size:11px;color:#888;margin-bottom:12px;">PROJECT ARCHIVE &middot; 存档列表 &middot; <span style="color:#888;">BGM: Narvik Snow</span></div>'
+                + 'border:1px solid rgba(255,255,255,0.30);padding:18px 20px;background:#0A0C10;'
+                + 'font-family:\'Courier New\',monospace;">'
+                +   '<div style="font-family:\'Courier New\',monospace;font-size:13px;font-weight:900;letter-spacing:2px;margin-bottom:4px;color:#f0f0f0;">[ SYSTEM_MENU ] <span style="font-size:10px;color:#aaa;">V1.167</span></div>'
+                +   '<div style="font-size:11px;color:#888;margin-bottom:12px;">PROJECT ARCHIVE &middot; 存档列表 '
+                +     '&middot; <span style="color:#a0b0d0;">&#9679;</span> <span id="xz-archive-cap" style="color:#cfcfcf;">[ 00 / 12 ]</span>'
+                +     ' &middot; <span style="color:#888;">BGM: Narvik Snow</span></div>'
                 +   '<div id="xz-archive-list" style="min-height:160px;"></div>'
-                +   '<div style="margin-top:12px;font-family:\'Courier New\',monospace;font-size:10px;color:#999;">&larr;/&rarr; 选择 &middot; Z 读取 &middot; X 关闭 &middot; C 新存档</div>'
+                +   '<div id="xz-archive-notice" style="font-size:11px;color:#a0b0d0;margin-top:8px;letter-spacing:1px;"></div>'
+                +   '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.16);font-size:10px;color:#999;line-height:1.8;">'
+                +     '列表 &rarr; Project Archive 进入 &middot; &larr;/&rarr; 选择 &middot; Z 读取 &middot; X 关闭<br>'
+                +     'C 新存档 &middot; S 覆盖当前槽 &middot; Delete(46) 删除当前槽'
+                +   '</div>'
                 + '</div>';
             document.body.appendChild(el);
             return el;
@@ -2023,20 +2124,30 @@
             var layer = ensureLayer();
             var list  = document.getElementById("xz-archive-list");
             if (!list) return;
+            // 容量指示与一行可见反馈（覆盖 / 删除 / 满 / 读档失败）
+            var cap = document.getElementById("xz-archive-cap");
+            if (cap) { cap.innerHTML = "[ " + pad2(slots.length) + " / " + pad2(MAX_SLOTS) + " ]"; }
+            var note = document.getElementById("xz-archive-notice");
+            if (note) { note.innerHTML = escapeHtml(notice); }
             if (!slots.length) {
-                list.innerHTML = '<div style="color:#999;padding:20px 0;text-align:center;">NO SAVE DATA</div>';
+                list.innerHTML = '<div style="font-family:\'Courier New\',monospace;color:#999;'
+                    + 'padding:20px 0;text-align:center;letter-spacing:2px;">NO SAVE DATA</div>';
             } else {
                 var html = "";
                 for (var i = 0; i < slots.length; i++) {
                     var s = slots[i];
-                    var active = (i === cursor)
-                        ? "background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.6);color:#fff;"
-                        : "border-color:transparent;color:#cfcfcf;";
-                    html += '<div style="padding:8px 12px;border:1px solid;' + active + 'border-radius:6px;margin-bottom:6px;">'
-                        +   '<span style="font-family:\'Courier New\',monospace;font-size:12px;color:#888;margin-right:12px;">[ ' + pad2(s.id) + ' ]</span>'
-                        +   '<span style="font-size:14px;color:#f0f0f0;">' + escapeHtml(s.name) + '</span>'
-                        +   '<span style="float:right;font-family:\'Courier New\',monospace;font-size:10px;color:#888;">'
-                        +     (s.data && s.data.savedAt ? s.data.savedAt.slice(0,10) : '') + '</span></div>';
+                    var active = (i === cursor);
+                    var bg = active ? "rgba(255,255,255,0.14)" : "transparent";
+                    var fg = active ? "#ffffff" : "#cfcfcf";
+                    var bd = active ? "rgba(255,255,255,0.60)" : "rgba(255,255,255,0.12)";
+                    var when = formatStamp(s.ts || (s.data && s.data.savedAt));
+                    html += '<div style="font-family:\'Courier New\',monospace;font-size:12px;line-height:20px;'
+                        + 'padding:5px 10px;border:1px solid ' + bd + ';background:' + bg + ';color:' + fg
+                        + ';margin-bottom:4px;">'
+                        +   '<span style="color:#888;">[ ' + pad2(s.id) + ' ]</span> '
+                        +   '<span style="color:' + fg + ';">' + (active ? '&gt; ' : '&nbsp;&nbsp;') + escapeHtml(s.name) + '</span>'
+                        +   '<span style="float:right;font-size:10px;color:#888;">' + escapeHtml(when) + '</span>'
+                        +   '<span style="clear:both;display:block;"></span></div>';
                 }
                 list.innerHTML = html;
             }
@@ -2059,7 +2170,15 @@
                 }
                 if (code === 90) { XZArchive.loadSlot(cursor); return true; }
                 if (code === 88) { XZArchive.closeList(); return true; }
-                if (code === 67) { XZArchive.save(); render(); return true; }
+                if (code === 67) { XZArchive.save(); return true; }
+                // S(83)：面板内覆盖当前槽（不是全局快捷键）
+                if (code === 83) {
+                    var cur = slots[cursor];
+                    if (cur) { XZArchive.save(null, null, cur.id); }
+                    return true;
+                }
+                // Delete(46)：删除当前槽（内部已 persist + render），与 X(88) 互不干扰
+                if (code === 46) { XZArchive.deleteSlot(cursor); return true; }
                 return true;
             }
             if (code === 67)  { XZArchive.save(); return true; }
