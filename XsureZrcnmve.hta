@@ -1405,11 +1405,13 @@
                     displayModeRefineTimer = null;
                     try {
                         if (!fullscreenActive) { return; }
-                        fullscreenChrome = readWindowChrome();
+                        var measured = readWindowChrome();
                         var off = readOriginOffset();
                         if (off) { fullscreenOriginOffset = off; }
-                        if (want === DISPLAY_MODE_BORDERLESS
-                            && measuredChromeUsable(fullscreenChrome, fullscreenOriginOffset)) {
+                        // 只有外框差值与原点偏移都通过可用性校验才缓存，否则保持 null；
+                        // 否则 exitDisplayMode 会用脏值还原，导致窗口尺寸错乱（已知边界缺陷修复）
+                        fullscreenChrome = (measured && measuredChromeUsable(measured, fullscreenOriginOffset)) ? measured : null;
+                        if (want === DISPLAY_MODE_BORDERLESS && fullscreenChrome) {
                             var dw = fullscreenChrome.dw;
                             var dh = fullscreenChrome.dh;
                             var ox = fullscreenOriginOffset.ox;
