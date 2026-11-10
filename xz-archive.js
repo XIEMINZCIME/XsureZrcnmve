@@ -130,7 +130,7 @@
         if (el) return el;
         el = document.createElement("div");
         el.id = "xz-archive-layer";
-        el.style.cssText = "position:absolute;left:0;top:0;right:0;bottom:0;z-index:9000;display:none;"
+        el.style.cssText = "position:absolute;left:0;top:0;right:0;bottom:0;z-index:10005;display:none;"
             + "background:rgba(8,8,8,0.94);color:#f0f0f0;font-family:'Microsoft YaHei',sans-serif;";
         el.innerHTML =
             '<div id="xz-archive-box" style="position:absolute;left:50%;top:50%;width:600px;'

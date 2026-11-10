@@ -141,7 +141,7 @@
         .lp-statusbar span:first-child { left: 16px; }
     /* V1.168：右下角 xzc 徽标（点击外部跳转个人主页） */
     #xzc-badge {
-      position: fixed; right: 14px; bottom: 14px; z-index: 10002;
+      position: fixed; right: 14px; bottom: 14px; z-index: 10002; display: none;
       font-family: 'Courier New', monospace; font-size: 12px; font-weight: 700;
       letter-spacing: 1px; color: #e8e8e8; background: rgba(8,8,8,0.72);
       border: 1px solid rgba(255,255,255,0.28); padding: 6px 10px; cursor: pointer;
@@ -389,6 +389,8 @@
         function finishSplash() {
             if (splashDone) { return; }
             splashDone = true;
+            // hotfix: 闪屏结束后恢复 xzc 徽标（取不到元素时静默跳过，不抛错）
+            var b=document.getElementById("xzc-badge"); if(b){b.style.display="block";}
             if (fadeTimer !== null) { clearInterval(fadeTimer); fadeTimer = null; }
             if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null; }
             if (guardTimer !== null) { clearTimeout(guardTimer); guardTimer = null; }
@@ -444,7 +446,7 @@
             INK: '#f2f4ef',
             NOISE_ALPHA: 0.34
         };
-        var MENU_ITEMS = ['Project Archive', 'Settings', 'Return to Reality', '列表'];
+        var MENU_ITEMS = ['Project Archive', 'Settings', 'Return to Reality', 'LIST'];
 
         var menuEl = document.getElementById("mainmenu");
         var menuFrame = document.getElementById("menu-frame");
@@ -2095,7 +2097,7 @@
             if (el) return el;
             el = document.createElement("div");
             el.id = "xz-archive-layer";
-            el.style.cssText = "position:absolute;left:0;top:0;right:0;bottom:0;z-index:9000;display:none;"
+            el.style.cssText = "position:absolute;left:0;top:0;right:0;bottom:0;z-index:10005;display:none;"
                 + "background:rgba(8,8,8,0.94);color:#f0f0f0;font-family:'Courier New',monospace;";
             el.innerHTML =
                 '<div id="xz-archive-box" style="position:absolute;left:50%;top:50%;width:600px;'
